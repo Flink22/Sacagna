@@ -26,11 +26,13 @@ def read():
     
     for i in range(0, 5):
         
+        laser_MM[i] = 0
+        
         for k in range(0, 5):
             sensor = vl6180.VL6180X(i2c, address = laser_ADDRESS[i])
             laser_MM[i] += sensor.range
         
         laser_MM[i] = laser_MM[i]/5
-        print("Range: {0}mm".format(laser_MM[i]))
         
     time.sleep(1)
+    return laser_MM
