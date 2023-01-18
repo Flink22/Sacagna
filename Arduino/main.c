@@ -49,6 +49,9 @@ int main(void){
 			} else{
 			PORTA=0x00;
 		}
+		
+		
+		
 	}
 }
 
@@ -70,7 +73,7 @@ void init_intt(){ //definisco gli interrupt esterni e li attivo
 	
 }
 
-void init_timer4(){ //faccio partire il timer 4 in normal mode (presc. /8) per velocit‡ motori
+void init_timer4(){ //faccio partire il timer 4 in normal mode (presc. /8) per velocit√† motori
 	
 	TCCR4A = 0x00;
 	TCCR4B = (1<<CS41);
@@ -124,6 +127,23 @@ void pid(){
 		dist_temp = (70 * M_PI) * speed * 0.032768;
 		
 	}
+	
+	error = wanted_speed - speed;
+	proportional = error * Kp;
+	integral[pid_mot] += Kint * error;
+	derivative = (error - olderror[pid_mot]) * Kdt;
+	olderror[pid_mot] = error;
+	
+	
+	
+	
+	
+	integrale[pid_mot] = integrale[M_at] > limI ? limI : integrale[M_at] < -limI ? -limI : integrale[M_at];
+	proporzionale = proporzionale > limP ? limP : proporzionale < -limP ? -limP : proporzionale;
+	derivata = derivata > limD ? limD : derivata < -limD ? -limD : derivata;
+	
+	correzione = proporzionale + derivata + integrale[M_at] + attuali[M_at]; 
+	correzione = correzione > 1023 ? 1023 : correzione < -1023 ? -1023 : correzione; 
 	
 }
 
