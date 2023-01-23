@@ -137,50 +137,50 @@ void driver_set(){
 		
 		case 0:
 			if(driver[0][0]<0){
-				driver[0][0] = driver[0][0] * -1;
 				PORTJ &= 0b111;
 				PORTJ |= 0b10000;
+				OCR1B = driver[0][0] * -1;
 			}else{
 				PORTJ &= 0b111;
 				PORTJ |= 0b1000;
+				OCR1B = driver[0][0];
 			}
-			OCR1B = driver[0][0];
 			break;
 			
 		case 1:
 		if(driver[1][0]<0){
-			driver[1][0] = driver[1][0] * -1;
 			PORTJ &= 0b11100;
 			PORTJ |= 0b1;
+			OCR1A = driver[1][0] * -1;
 			}else{
 			PORTJ &= 0b11100;
 			PORTJ |= 0b10;
+			OCR1A = driver[1][0];
 		}
-		OCR1A = driver[1][0];
 		break;
 		
 		case 2:
 		if(driver[2][0]<0){
-			driver[2][0] = driver[2][0] * -1;
 			PORTA &= 0b11100000;
 			PORTA |= 0b1000;
+			OCR3B = driver[2][0] * -1;
 			}else{
 			PORTA &= 0b11100000;
 			PORTA |= 0b10000;
+			OCR3B = driver[2][0];
 		}
-		OCR3B = driver[2][0];
 		break;
 		
 		case 3:
 		if(driver[3][0]<0){
-			driver[3][0] = driver[3][0] * -1;
 			PORTA &= 0b111000;
 			PORTA |= 0b10000000;
+			OCR3A = driver[3][0] * -1;
 			}else{
 			PORTA &= 0b111000;
 			PORTA |= 0b1000000;
+			OCR3A = driver[3][0];
 		}
-		OCR3A = driver[3][0];
 		break;
 		
 	}
