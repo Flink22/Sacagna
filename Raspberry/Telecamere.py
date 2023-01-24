@@ -3,7 +3,7 @@ import subprocess
 import numpy as np
 
 errcount = 0
-exposuretime = 150 #va da 78 a 1250
+exposuretime = 1000 #va da 78 a 1250
 low_b = np.array([0, 0, 0])
 high_b = np.array([20, 20, 20])
 
@@ -14,9 +14,8 @@ command = "v4l2-ctl -d /dev/video0 -c exposure_auto=1 -c exposure_absolute=" + s
 output = subprocess.call(command, shell=True)
 
 if not camdx.isOpened():
-    print("Telecamera DX Error")
+    print("Telecamera DX Errore")
     errcount += 1
-    exit()
 
 if errcount == 0:
     for i in range (0, 3):
@@ -38,7 +37,7 @@ if errcount == 0:
         hull_dx = cv.convexHull(cnt_dx, returnPoints = False)
         defects = cv.convexityDefects(cnt_dx, hull_dx)
         
-        p=0
+        defects_n = 0
 
         for i in range(defects.shape[0]):
             s,e,f,d = defects[i,0]
@@ -49,11 +48,18 @@ if errcount == 0:
             if dist<0 :
                 dist *= -1
             if dist>30 :
-                p += 1
+                defects_n += 1
             cv.line(frame_dx,start,end,[0,255,0],2)
             cv.circle(frame_dx,far,5,[0,0,255],-1)
         
-        print(p)
+        if defects_n == 0:
+            print("S")
+        elif defects_n == 1:
+            print("U")
+        elif defects_n == 2:
+            print("H")
+        else:
+            print("NO LETTER")
         
         
         cv.drawContours(frame_dx, [cnt_dx], 0, (255,0,0), 2)
