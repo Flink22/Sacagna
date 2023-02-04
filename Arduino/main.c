@@ -5,7 +5,7 @@
 #include <util/delay.h>
 
 #define n_mot 4
-#define kp 5
+#define kp 6
 #define ki 1
 #define kd 1
 
