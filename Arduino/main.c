@@ -5,9 +5,9 @@
 #include <util/delay.h>
 
 #define n_mot 4
-#define kp 2.5
-#define ki 0.1
-#define kd 0.1
+#define kp 5
+#define ki 1
+#define kd 1
 
 volatile int mot_cursor;
 
@@ -336,7 +336,7 @@ ISR(TIMER0_COMPA_vect){
 	derivative = (speed_error - old_error[pid_mot]) / 0.01;
 	old_error[pid_mot] = speed_error;
 
-	correction = (speed_error * kp) + (derivative * kd) + (integral[pid_mot] * ki) + speed[pid_mot];
+	correction = (speed_error * (kp/2)) + (derivative * (kd/10)) + (integral[pid_mot] * (ki/10)) + speed[pid_mot];
 	if(correction > 1023)
 	correction = 1023;
 	if(correction < 1023)
