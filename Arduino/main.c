@@ -40,6 +40,7 @@ void init_pwm();
 void start_pwm();
 void init_pid();
 void init_serial();
+void driver_set();
 
 unsigned char a = 0;
 unsigned char temp[3];
@@ -90,48 +91,7 @@ int main(void){
 	
 	start_pwm();
 	
-	while(1) {
-		
-		if(driver[0][0]<0){
-			PORTJ &= 0b111;
-			PORTJ |= 0b10000;
-			OCR1B = (driver[0][0] * -1);
-			}else{
-			PORTJ &= 0b111;
-			PORTJ |= 0b1000;
-			OCR1B = driver[0][0];
-		}
-		
-		if(driver[1][0]<0){
-			PORTJ &= 0b11100;
-			PORTJ |= 0b1;
-			OCR1A = (driver[1][0] * -1);
-			}else{
-			PORTJ &= 0b11100;
-			PORTJ |= 0b10;
-			OCR1A = driver[1][0];
-		}
-		
-		if(driver[2][0]<0){
-			PORTA &= 0b11100000;
-			PORTA |= 0b01000;
-			OCR3B = (driver[2][0] * -1);
-			}else{
-			PORTA &= 0b11100000;
-			PORTA |= 0b10000;
-			OCR3B = driver[2][0];
-		}
-		
-		if(driver[3][0]<0){
-			PORTA &= 0b111000;
-			PORTA |= 0b10000000;
-			OCR3A = (driver[3][0] * -1);
-			}else{
-			PORTA &= 0b111000;
-			PORTA |= 0b01000000;
-			OCR3A = driver[3][0];
-		}
-	
+	while(1) {	
 	}
 
 }
@@ -344,4 +304,52 @@ ISR(TIMER0_COMPA_vect){
 	
 	driver[pid_mot][0] = correction;
 	
+	if(pid_mot == 3){
+		driver_set();
+	}
+	
+}
+
+void driver_set(){
+
+	if(driver[0][0]<0){
+		PORTJ &= 0b111;
+		PORTJ |= 0b10000;
+		OCR1B = (driver[0][0] * -1);
+		}else{
+		PORTJ &= 0b111;
+		PORTJ |= 0b1000;
+		OCR1B = driver[0][0];
+	}
+	
+	if(driver[1][0]<0){
+		PORTJ &= 0b11100;
+		PORTJ |= 0b1;
+		OCR1A = (driver[1][0] * -1);
+		}else{
+		PORTJ &= 0b11100;
+		PORTJ |= 0b10;
+		OCR1A = driver[1][0];
+	}
+	
+	if(driver[2][0]<0){
+		PORTA &= 0b11100000;
+		PORTA |= 0b01000;
+		OCR3B = (driver[2][0] * -1);
+		}else{
+		PORTA &= 0b11100000;
+		PORTA |= 0b10000;
+		OCR3B = driver[2][0];
+	}
+	
+	if(driver[3][0]<0){
+		PORTA &= 0b111000;
+		PORTA |= 0b10000000;
+		OCR3A = (driver[3][0] * -1);
+		}else{
+		PORTA &= 0b111000;
+		PORTA |= 0b01000000;
+		OCR3A = driver[3][0];
+	}
+
 }
