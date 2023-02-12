@@ -5,33 +5,35 @@
 #include <util/delay.h>
 
 #define n_mot 4
-#define kp 6
-#define ki 1
-#define kd 1
 
-volatile int mot_cursor;
+#define kp 150.0
+#define ki 2.0
+#define kd 7.0
 
-volatile int pid_mot;
-volatile float speed_error;
-volatile float wanted_speed[n_mot];
-volatile float integral[n_mot];
-volatile float derivative;
-volatile long int old_error[n_mot];
-volatile long int correction;
+int mot_cursor = 0;
 
-volatile long int mot_curr[n_mot];
-volatile long int mot_old[n_mot];
-volatile long int mot_temp[n_mot];
-volatile int mot_dir[n_mot];
+int pid_mot = 0;
 
-volatile float dist_travelled;
-volatile float dist_temp;
-volatile float speedf[n_mot];
-volatile long int speed[n_mot];
+float speed_error;
+float wanted_speed[n_mot];
+float integral[n_mot];
+float derivative;
+float proportional;
+long int old_error[n_mot];
+long int correction;
+float speed[n_mot];
 
-volatile int driver[n_mot][4];
+unsigned long int mot_curr[n_mot];
+unsigned long int mot_old[n_mot];
+unsigned long int mot_temp[n_mot];
+int mot_dir[n_mot];
 
-volatile int i;
+float dist_travelled;
+float dist_temp;
+
+int driver[n_mot][4];
+
+int i;
 
 void init_gpio();
 void init_intt();
@@ -46,19 +48,22 @@ unsigned char a = 0;
 unsigned char temp[3];
 
 void Serial_Tx(int data) {
+
+	if(data < 0)
+	data *= -1;
 	
 	if (data>99) {
 		for (int k=0; k<3; k++){
 			temp[k] = data%10;
 			data = data / 10;
 		}
-	}else if(data>9) {
+		}else if(data>9) {
 		for (int k=0; k<2; k++){
 			temp[k] = data%10;
 			data = data / 10;
 		}
 		temp[2] = 0;
-	}else {
+		}else {
 		temp[0] = data;
 		temp[1] = 0;
 		temp[2] = 0;
@@ -67,7 +72,6 @@ void Serial_Tx(int data) {
 	for (int k=0; k<3; k++){
 		while ( !( UCSR0A & (1<<UDRE0)) );
 		UDR0 = temp[k];
-		_delay_us(1);
 	}
 	
 	_delay_ms(1);
@@ -91,7 +95,7 @@ int main(void){
 	
 	start_pwm();
 	
-	while(1) {	
+	while(1) {
 	}
 
 }
@@ -123,7 +127,7 @@ void init_intt(){ //definisco gli interrupt esterni e li attivo
 void init_timer4(){ //faccio partire il timer 4 in normal mode (presc. /8) per velocità motori
 
 	TCCR4A |= 0x00;
-	TCCR4B |= (1<<CS41);
+	TCCR4B |= (1<<CS41)|(1<<CS40);
 	TCCR4C |= 0x00;
 
 	TCNT4 = 0;
@@ -157,7 +161,7 @@ void start_pwm(){ //prescaler /1 per t/c1 e t/c3 + enable driver
 void init_serial(){
 	
 	UBRR0H = 0;
-	UBRR0L = 0;
+	UBRR0L = 1;
 	UCSR0A = 0x00;
 	UCSR0B = 0x08;
 	UCSR0C = 0x06;
@@ -177,132 +181,132 @@ void init_pid(){ //Abilito t/c 0 per fare pid ogni intervallo di tempo (400 Hz, 
 }
 
 ISR(INT0_vect){
-
-	mot_cursor = 0;
-	mot_temp[mot_cursor] = TCNT4;
+	
+	mot_temp[0] = TCNT4;
 
 	if((PINH&0x08)!=0){
-		mot_dir[mot_cursor] = -1;
+		mot_dir[0] = -1;
 		} else{
-		mot_dir[mot_cursor] = 1;
+		mot_dir[0] = 1;
 	}
 
-	if(mot_temp[mot_cursor] > mot_old[mot_cursor]){
-		mot_curr[mot_cursor] = mot_temp[mot_cursor] - mot_old[mot_cursor];
+	if(mot_temp[0] >= mot_old[0]){
+		mot_curr[0] = mot_temp[0] - mot_old[0];
+		} else{
+		mot_old[0] = mot_old[0] - 65535;
+		mot_curr[0] = mot_temp[0] - mot_old[0];
 	}
 
-	if(mot_temp[mot_cursor] < mot_old[mot_cursor]){
-		mot_old[mot_cursor] = mot_old[mot_cursor] - 65535;
-		mot_curr[mot_cursor] = mot_temp[mot_cursor] - mot_old[mot_cursor];
-	}
-
-	mot_old[mot_cursor] = mot_temp[mot_cursor];
+	mot_old[0] = mot_temp[0];
 
 }
 
 ISR(INT1_vect){
 
-	mot_cursor = 1;
-	mot_temp[mot_cursor] = TCNT4;
+	mot_temp[1] = TCNT4;
 
 	if((PINH&0x04)!=0){
-		mot_dir[mot_cursor] = -1;
+		mot_dir[1] = -1;
 		} else{
-		mot_dir[mot_cursor] = 1;
+		mot_dir[1] = 1;
 	}
 
-	if(mot_temp[mot_cursor] > mot_old[mot_cursor]){
-		mot_curr[mot_cursor] = mot_temp[mot_cursor] - mot_old[mot_cursor];
+	if(mot_temp[1] >= mot_old[1]){
+		mot_curr[1] = mot_temp[1] - mot_old[1];
+		} else{
+		mot_old[1] = mot_old[1] - 65535;
+		mot_curr[1] = mot_temp[1] - mot_old[1];
 	}
 
-	if(mot_temp[mot_cursor] < mot_old[mot_cursor]){
-		mot_old[mot_cursor] = mot_old[mot_cursor] - 65535;
-		mot_curr[mot_cursor] = mot_temp[mot_cursor] - mot_old[mot_cursor];
-	}
-
-	mot_old[mot_cursor] = mot_temp[mot_cursor];
+	mot_old[1] = mot_temp[1];
 
 }
 
 ISR(INT2_vect){
 
-	mot_cursor = 2;
-	mot_temp[mot_cursor] = TCNT4;
+	mot_temp[2] = TCNT4;
 
-	if((PINH&0x02)!=0){
-		mot_dir[mot_cursor] = 1;
+	if((PINH&0x01)!=0){
+		mot_dir[2] = -1;
 		} else{
-		mot_dir[mot_cursor] = -1;
+		mot_dir[2] = 1;
 	}
 
-	if(mot_temp[mot_cursor] > mot_old[mot_cursor]){
-		mot_curr[mot_cursor] = mot_temp[mot_cursor] - mot_old[mot_cursor];
+	if(mot_temp[2] >= mot_old[2]){
+		mot_curr[2] = mot_temp[2] - mot_old[2];
+		} else{
+		mot_old[2] = mot_old[2] - 65535;
+		mot_curr[2] = mot_temp[2] - mot_old[2];
 	}
 
-	if(mot_temp[mot_cursor] < mot_old[mot_cursor]){
-		mot_old[mot_cursor] = mot_old[mot_cursor] - 65535;
-		mot_curr[mot_cursor] = mot_temp[mot_cursor] - mot_old[mot_cursor];
-	}
-
-	mot_old[mot_cursor] = mot_temp[mot_cursor];
+	mot_old[2] = mot_temp[2];
 
 }
 
 ISR(INT3_vect){
 
-	mot_cursor = 3;
-	mot_temp[mot_cursor] = TCNT4;
+	mot_temp[3] = TCNT4;
 
-	if((PINH&0x01)!=0){
-		mot_dir[mot_cursor] = 1;
+	if((PINH&0x02)!=0){
+		mot_dir[3] = -1;
 		} else{
-		mot_dir[mot_cursor] = -1;
+		mot_dir[3] = 1;
 	}
 
-	if(mot_temp[mot_cursor] > mot_old[mot_cursor]){
-		mot_curr[mot_cursor] = mot_temp[mot_cursor] - mot_old[mot_cursor];
+	if(mot_temp[3] >= mot_old[3]){
+		mot_curr[3] = mot_temp[3] - mot_old[3];
+		} else{
+		mot_old[3] = mot_old[3] - 65535;
+		mot_curr[3] = mot_temp[3] - mot_old[3];
 	}
 
-	if(mot_temp[mot_cursor] < mot_old[mot_cursor]){
-		mot_old[mot_cursor] = mot_old[mot_cursor] - 65535;
-		mot_curr[mot_cursor] = mot_temp[mot_cursor] - mot_old[mot_cursor];
-	}
-
-	mot_old[mot_cursor] = mot_temp[mot_cursor];
+	mot_old[3] = mot_temp[3];
 
 }
 
 ISR(TIMER0_COMPA_vect){
-
-	if(pid_mot < 4){
-		pid_mot += 1;
-		} else{
-		pid_mot = 0;
-	}
-
-	speedf[pid_mot] = (((double)(2000000)) * 60)/(((double)mot_curr[pid_mot]) * 990);
-	if (speedf[pid_mot] < 10){
-		speedf[pid_mot] = 0;
-	}
-	speedf[pid_mot] *= mot_dir[pid_mot];
 	
-	speed[pid_mot] = speedf[pid_mot];
-	Serial_Tx(speed[pid_mot]);
+	pid_mot ++;
+	if(pid_mot >= 4)pid_mot = 0;
 
-	wanted_speed[pid_mot] = 100;
-
-	speed_error = wanted_speed[pid_mot] - speed[pid_mot];
-	integral[pid_mot] += speed_error * 0.01;
-	derivative = (speed_error - old_error[pid_mot]) / 0.01;
-	old_error[pid_mot] = speed_error;
-
-	correction = (speed_error * (kp/2)) + (derivative * (kd/10)) + (integral[pid_mot] * (ki/10)) + speed[pid_mot];
-	if(correction > 1023)
-	correction = 1023;
-	if(correction < 1023)
-	correction = -1023;
+	speed[pid_mot] = (((double)(2000000)))/(((double)mot_curr[pid_mot]) * 990);
 	
-	driver[pid_mot][0] = correction;
+	if (speed[pid_mot] < 3){
+	
+		speed[pid_mot] = (int)speed[pid_mot];
+		Serial_Tx(speed[pid_mot]);
+	
+		wanted_speed[pid_mot] = 200;
+	
+		proportional = 0;
+		derivative = 0;
+	
+		if (speed[pid_mot] < 150){
+
+			speed_error = wanted_speed[pid_mot] - speed[pid_mot];
+			proportional = speed_error * kp;
+			integral[pid_mot] += speed_error * ki;
+			derivative = (speed_error - old_error[pid_mot]) * ki;
+			old_error[pid_mot] = speed_error;
+		
+			if(proportional >= 500)proportional = 500;
+			if(proportional <= -500)proportional = -500;
+		
+			if(integral[pid_mot] >= 0.2)integral[pid_mot] = 0.2;
+			if(integral[pid_mot] <= -0.2)integral[pid_mot] = -0.2;
+		
+			if(derivative >= 200)derivative = 200;
+			if(derivative <= -200)derivative = -200;
+
+			correction = proportional + derivative + integral[pid_mot];
+		
+			if(correction >= 1023)correction = 1023;
+			if(correction <= 0)correction = 0;
+
+			driver[pid_mot][0] = correction;
+		
+		}
+	}
 	
 	if(pid_mot == 3){
 		driver_set();
