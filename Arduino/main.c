@@ -146,40 +146,6 @@ void init_pid(){ //Abilito t/c 0 per fare pid ogni intervallo di tempo (4000 Hz,
 	
 }
 
-void driver_set(){
-// 	if(DVR[0].dir==-1){
-// 		PORTJ &= 0b111;
-// 		PORTJ |= 0b10000;
-// 		}else{
-// 		PORTJ &= 0b111;
-// 		PORTJ |= 0b1000;
-// 	}
-// 	
-// 	if(DVR[1].dir==-1){
-// 		PORTJ &= 0b11100;
-// 		PORTJ |= 0b1;
-// 		}else{
-// 		PORTJ &= 0b11100;
-// 		PORTJ |= 0b10;
-// 	}
-// 	
-// 	if(DVR[2].dir==-1){
-// 		PORTA &= 0b11100000;
-// 		PORTA |= 0b01000;
-// 		}else{
-// 		PORTA &= 0b11100000;
-// 		PORTA |= 0b10000;
-// 	}
-// 	
-// 	if(DVR[3].dir==-1){
-// 		PORTA &= 0b111000;
-// 		PORTA |= 0b10000000;
-// 		}else{
-// 		PORTA &= 0b111000;
-// 		PORTA |= 0b01000000;
-// 	}
-}
-
 ISR(INT0_vect){
 	
 	int m=0;
@@ -295,7 +261,8 @@ ISR(TIMER0_COMPA_vect){
 			if(correction > 1023)correction = 1023;
 			if(correction < 0)correction = 0;
 			
-			DVR[pid_mot].dir = 1;
+			DVR[pid_mot].dir = -1;
+			DVR[pid_mot].dir *= -1;
 			DVR[pid_mot].pwm = correction;
 			
 		} else {
@@ -326,17 +293,35 @@ int main(void){
 	
 	sei();
 	
-	PORTA = 0b1110000;
-	PORTJ = 0b1110;
-	
 	while(1) {
 		
 		if(setdrv == 1){
+			setdrv = 0;
 			OCR1B = DVR[0].pwm;
 			OCR1A = DVR[1].pwm;
 			OCR3B = DVR[2].pwm;
 			OCR3A = DVR[3].pwm;
-			setdrv = 0;
+			
+			if(DVR[0].dir==1){
+				PORTJ &= 0b111;PORTJ |= 0b10000;
+			}else{
+				PORTJ &= 0b111;PORTJ |= 0b1000;
+			}
+			if(DVR[1].dir==1){
+				PORTJ &= 0b11100;PORTJ |= 0b1;
+			}else{
+				PORTJ &= 0b11100;PORTJ |= 0b10;
+			}
+			if(DVR[2].dir==1){
+				PORTA &= 0b11100000;PORTA |= 0b01000;
+			}else{
+				PORTA &= 0b11100000;PORTA |= 0b10000;
+			}			
+			if(DVR[3].dir==1){
+				PORTA &= 0b111000;PORTA |= 0b10000000;
+			}else{
+				PORTA &= 0b111000;PORTA |= 0b01000000;
+			}
 		}
 		
 	}
