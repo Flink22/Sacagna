@@ -10,23 +10,24 @@
 #define ki 2.0
 #define kd 50.0
 
-int pid_mot = 0;
-
 double speed[n_mot] = {0};
 double speed_error = {0};
 double old_error[n_mot] = {0};
 double wanted_speed[n_mot] = {0};
 double setspeed;
 
-double proportional;
-double integral[n_mot];
-double derivative;
-unsigned int correction;
-
 double dist_travelled;
 double dist_temp;
 
 int setdrv = 1;
+
+typedef struct {
+	int pid_mot;
+	double P;
+	double I[n_mot];
+	double D;
+	unsigned int correction;
+} def_pid;
 
 typedef struct {
 	unsigned long int curr;
@@ -40,6 +41,7 @@ typedef struct {
 	unsigned int pwm;
 } def_driver;
 
+def_pid PiD;
 def_readspeed RSP[4];
 def_driver DVR[4];
 
@@ -215,64 +217,60 @@ ISR(INT3_vect){
 	RSP[m].old = RSP[m].temp;
 }
 
-
 ISR(TIMER0_COMPA_vect){
 	
-	pid_mot ++;
-	if(pid_mot >= 4){
-		pid_mot = 0;
+	PiD.pid_mot ++;
+	if(PiD.pid_mot >= 4){
+		PiD.pid_mot = 0;
 		setdrv = 1;
 	}
 
-	speed[pid_mot] = (((double)2000000.0) / (((double)RSP[pid_mot].curr) * 990.0));
+	speed[PiD.pid_mot] = (((double)2000000.0) / (((double)RSP[PiD.pid_mot].curr) * 990.0));
 	
-	if (speed[pid_mot] < 0.1){
-		speed[pid_mot] = 0;
+	if (speed[PiD.pid_mot] < 0.1){
+		speed[PiD.pid_mot] = 0;
+	} else {
+		speed[PiD.pid_mot] += speed[PiD.pid_mot] * -0.01;
 	}
-	else {
-		speed[pid_mot] += speed[pid_mot] * -0.01;
-	}
 		
-	if (speed[pid_mot] < 4){
+	if (speed[PiD.pid_mot] < 4){
 		
-		wanted_speed[pid_mot] = 1.2;
-		setspeed = wanted_speed[pid_mot];
+		wanted_speed[PiD.pid_mot] = 1.2;
+		setspeed = wanted_speed[PiD.pid_mot];
 		
-		proportional = 0;
-		derivative = 0;
-		correction = 0;
+		PiD.P = 0;
+		PiD.D = 0;
+		PiD.correction = 0;
 		
-		if ((setspeed != 0) || ((setspeed == 0) && (speed[pid_mot] != 0))){
+		if ((setspeed != 0) || ((setspeed == 0) && (speed[PiD.pid_mot] != 0))){
 			
-			speed_error = setspeed - speed[pid_mot];
+			speed_error = setspeed - speed[PiD.pid_mot];
 			
-			proportional = speed_error * kp;
-			integral[pid_mot] += speed_error * ki;
-			derivative = speed_error - old_error[pid_mot];
+			PiD.P = speed_error * kp;
+			PiD.I[PiD.pid_mot] += speed_error * ki;
+			PiD.D = speed_error - old_error[PiD.pid_mot];
 			
-			old_error[pid_mot] = speed_error;
+			old_error[PiD.pid_mot] = speed_error;
 			
-			if(proportional > 700)proportional = 700;	
-			if(integral[pid_mot] > 5)integral[pid_mot] = 5;
-			if(derivative > 200)derivative = 200;
+			if(PiD.P > 700)PiD.P = 700;	
+			if(PiD.I[PiD.pid_mot] > 5)PiD.I[PiD.pid_mot] = 5;
+			if(PiD.D > 200)PiD.D = 200;
 			
-			correction = proportional + integral[pid_mot] + (derivative * kd) + DVR[pid_mot].pwm;
+			PiD.correction = PiD.P + PiD.I[PiD.pid_mot] + (PiD.D * kd) + DVR[PiD.pid_mot].pwm;
 			
-			if(correction > 1023)correction = 1023;
-			if(correction < 0)correction = 0;
+			if(PiD.correction > 1023)PiD.correction = 1023;
+			if(PiD.correction < 0)PiD.correction = 0;
 			
-			DVR[pid_mot].dir = -1;
-			DVR[pid_mot].dir *= -1;
-			DVR[pid_mot].pwm = correction;
+			DVR[PiD.pid_mot].dir *= -1;
+			DVR[PiD.pid_mot].pwm = PiD.correction;
 			
 		} else {
-			DVR[pid_mot].pwm = 0;
+			DVR[PiD.pid_mot].pwm = 0;
 		}
 		
 	}
 	
 }
-
 
 int main(void){
 
@@ -284,7 +282,7 @@ int main(void){
 	init_serial();
 
 	for(int i=0;i<4;i++){
-		integral[i] = 0;
+		PiD.I[i] = 0;
 		DVR[i].pwm = 0;
 		DVR[i].dir = 1;
 	}
