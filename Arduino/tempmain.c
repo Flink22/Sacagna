@@ -6,14 +6,14 @@
 
 #define n_mot 4
 
-#define kp 140.0
+#define kp 130.0
 #define ki 2.0
-#define kd 50.0
+#define kd 10.0
 #define diametro 69.0
 
-#define Plim 500
-#define Ilim 2
-#define Dlim 200
+#define Plim 500.0
+#define Ilim 2.0
+#define Dlim 200.0
 
 double speed[n_mot] = {0};
 double speed_error = {0};
@@ -36,7 +36,7 @@ typedef struct {
 	double P;
 	double I[n_mot];
 	double D;
-	unsigned int correction;
+	int correction;
 } def_pid;
 
 typedef struct {
@@ -127,10 +127,10 @@ void init_pwm(){ //pwm 10 bit con t/c1 e t/c3
 
 }
 
-void start_pwm(){ //prescaler /1 per t/c1 e t/c3 + enable driver
+void start_pwm(){ //prescaler /64 per t/c1 e t/c3 + enable driver
 
-	PORTA |= 0x20;
-	PORTJ |= 0x04;
+	PORTA = 0x20;
+	PORTJ = 0x04;
 
 	TCCR1B |= (0<<CS12)|(1<<CS11)|(1<<CS10);
 	TCCR3B |= (0<<CS32)|(1<<CS31)|(1<<CS30);
@@ -295,6 +295,7 @@ ISR(TIMER0_COMPA_vect){
 			
 		}else{
 			DVR[PiD.mot].pwm = 0;
+			DVR[PiD.mot].dir = 0;
 		}	
 	}
 }
@@ -328,27 +329,36 @@ int main(void){
 			OCR3A = DVR[3].pwm;
 			
 			if(DVR[0].dir==1){
-				PORTJ &= 0b111;PORTJ |= 0b10000;
-				}else{
-				PORTJ &= 0b111;PORTJ |= 0b1000;
+				PORTJ = (1<<PJ4)|(0<<PJ3);
+			}else if(DVR[0].dir==-1){
+				PORTJ = (0<<PJ4)|(1<<PJ3);
+			}else if(DVR[0].dir==0){
+				PORTJ = (1<<PJ4)|(1<<PJ3);
 			}
+			
 			if(DVR[1].dir==1){
-				PORTJ &= 0b11100;PORTJ |= 0b1;
-				}else{
-				PORTJ &= 0b11100;PORTJ |= 0b10;
+				PORTJ  = (0<<PJ1)|(1<<PJ0);
+			}else if(DVR[1].dir==-1){
+				PORTJ  = (1<<PJ1)|(0<<PJ0);
+			}else if(DVR[1].dir==0){
+				PORTJ  = (1<<PJ1)|(1<<PJ0);
 			}
+			
 			if(DVR[2].dir==1){
-				PORTA &= 0b11100000;PORTA |= 0b01000;
-				}else{
-				PORTA &= 0b11100000;PORTA |= 0b10000;
+				PORTA  = (0<<PA4)|(1<<PA3);
+			}else if(DVR[2].dir==-1){
+				PORTA  = (1<<PA4)|(0<<PA3);
+			}else if(DVR[2].dir==0){
+				PORTA  = (1<<PA4)|(1<<PA3);
 			}
-			if(DVR[3].dir==1){
-				PORTA &= 0b111000;PORTA |= 0b10000000;
-				}else{
-				PORTA &= 0b111000;PORTA |= 0b01000000;
+			
+			if(DVR[2].dir==1){
+				PORTA  = (1<<PA7)|(0<<PA6);
+			}else if(DVR[2].dir==-1){
+				PORTA  = (0<<PA7)|(1<<PA6);
+			}else if(DVR[2].dir==0){
+				PORTA  = (1<<PA7)|(1<<PA6);
 			}
 		}
-		
 	}
-
 }
