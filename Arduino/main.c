@@ -9,6 +9,7 @@
 #define kp 140.0
 #define ki 2.0
 #define kd 50.0
+#define diametro 69.0
 
 double speed[n_mot] = {0};
 double speed_error = {0};
@@ -20,6 +21,11 @@ double dist_travelled;
 double dist_temp;
 
 int setdrv = 1;
+
+typedef struct {
+	double trav[4];
+	double temp;
+} def_dis;
 
 typedef struct {
 	int pid_mot;
@@ -41,6 +47,7 @@ typedef struct {
 	unsigned int pwm;
 } def_driver;
 
+def_dis DIS;
 def_pid PiD;
 def_readspeed RSP[4];
 def_driver DVR[4];
@@ -139,10 +146,10 @@ void init_serial(){
 void init_pid(){ //Abilito t/c 0 per fare pid ogni intervallo di tempo (4000 Hz, quindi 1000 Hz a motore)
 
 	TCCR0A = (1<<COM0A0)|(0<<COM0A1);
-	TCCR0B = (1<<CS02)|(0<<CS01)|(0<<CS00);
+	TCCR0B = (0<<CS02)|(1<<CS01)|(0<<CS00);
 	TIMSK0 = (1<<OCIE0A);
 	
-	OCR0A = 16;
+	OCR0A = 249;
 	
 	sei();
 	
@@ -160,6 +167,7 @@ ISR(INT0_vect){
 		RSP[m].dir = 1;
 	}
 	
+	if (RSP[m].temp > RSP[m].old)
 	RSP[m].curr = RSP[m].temp - RSP[m].old;
 
 	RSP[m].old = RSP[m].temp;
@@ -178,6 +186,7 @@ ISR(INT1_vect){
 		RSP[m].dir = 1;
 	}
 	
+	if (RSP[m].temp > RSP[m].old)
 	RSP[m].curr = RSP[m].temp - RSP[m].old;
 
 	RSP[m].old = RSP[m].temp;
@@ -195,6 +204,7 @@ ISR(INT2_vect){
 		RSP[m].dir = 1;
 	}
 	
+	if (RSP[m].temp > RSP[m].old)
 	RSP[m].curr = RSP[m].temp - RSP[m].old;
 
 	RSP[m].old = RSP[m].temp;
@@ -212,6 +222,7 @@ ISR(INT3_vect){
 		RSP[m].dir = 1;
 	}
 	
+	if (RSP[m].temp > RSP[m].old)
 	RSP[m].curr = RSP[m].temp - RSP[m].old;
 
 	RSP[m].old = RSP[m].temp;
@@ -224,23 +235,27 @@ ISR(TIMER0_COMPA_vect){
 		PiD.pid_mot = 0;
 		setdrv = 1;
 	}
-
+	
+	speed[PiD.pid_mot] = 0.1;
 	speed[PiD.pid_mot] = (((double)2000000.0) / (((double)RSP[PiD.pid_mot].curr) * 990.0));
 	
+	int a;
+	a = speed[PiD.pid_mot] * 100;
+	Serial_Tx(a);
+	
 	if (speed[PiD.pid_mot] < 0.1){
-		speed[PiD.pid_mot] = 0;
-	} else {
-		speed[PiD.pid_mot] += speed[PiD.pid_mot] * -0.01;
+		speed[PiD.pid_mot] = 0.0;
 	}
+	
+	if (speed[PiD.pid_mot] < 3.0){
 		
-	if (speed[PiD.pid_mot] < 4){
-		
-		wanted_speed[PiD.pid_mot] = 1.2;
+		wanted_speed[PiD.pid_mot] = 2;
 		setspeed = wanted_speed[PiD.pid_mot];
 		
 		PiD.P = 0;
 		PiD.D = 0;
 		PiD.correction = 0;
+		
 		
 		if ((setspeed != 0) || ((setspeed == 0) && (speed[PiD.pid_mot] != 0))){
 			
@@ -252,7 +267,7 @@ ISR(TIMER0_COMPA_vect){
 			
 			old_error[PiD.pid_mot] = speed_error;
 			
-			if(PiD.P > 700)PiD.P = 700;	
+			if(PiD.P > 700)PiD.P = 700;
 			if(PiD.I[PiD.pid_mot] > 5)PiD.I[PiD.pid_mot] = 5;
 			if(PiD.D > 200)PiD.D = 200;
 			
@@ -261,14 +276,20 @@ ISR(TIMER0_COMPA_vect){
 			if(PiD.correction > 1023)PiD.correction = 1023;
 			if(PiD.correction < 0)PiD.correction = 0;
 			
+			DIS.temp = (speed[PiD.pid_mot] * diametro * M_PI) / 1000;
+			DIS.trav[PiD.pid_mot] += DIS.temp;
+			
+			DVR[PiD.pid_mot].dir = 1;
+			
 			DVR[PiD.pid_mot].dir *= -1;
 			DVR[PiD.pid_mot].pwm = PiD.correction;
 			
-		} else {
+			} else {
 			DVR[PiD.pid_mot].pwm = 0;
 		}
 		
 	}
+	
 	
 }
 
@@ -285,13 +306,14 @@ int main(void){
 		PiD.I[i] = 0;
 		DVR[i].pwm = 0;
 		DVR[i].dir = 1;
+		RSP[i].curr = 65000;
 	}
 	
 	start_pwm();
 	
 	sei();
 	
-	while(1) {
+	while(1) {		
 		
 		if(setdrv == 1){
 			setdrv = 0;
@@ -302,22 +324,22 @@ int main(void){
 			
 			if(DVR[0].dir==1){
 				PORTJ &= 0b111;PORTJ |= 0b10000;
-			}else{
+				}else{
 				PORTJ &= 0b111;PORTJ |= 0b1000;
 			}
 			if(DVR[1].dir==1){
 				PORTJ &= 0b11100;PORTJ |= 0b1;
-			}else{
+				}else{
 				PORTJ &= 0b11100;PORTJ |= 0b10;
 			}
 			if(DVR[2].dir==1){
 				PORTA &= 0b11100000;PORTA |= 0b01000;
-			}else{
+				}else{
 				PORTA &= 0b11100000;PORTA |= 0b10000;
-			}			
+			}
 			if(DVR[3].dir==1){
 				PORTA &= 0b111000;PORTA |= 0b10000000;
-			}else{
+				}else{
 				PORTA &= 0b111000;PORTA |= 0b01000000;
 			}
 		}
