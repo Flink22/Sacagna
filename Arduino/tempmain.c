@@ -242,17 +242,19 @@ ISR(TIMER0_COMPA_vect){
 	
 	speed[PiD.mot] = (((double)2000000.0) / (((double)RSP[PiD.mot].curr) * 990.0));
 	
-	int a;
-	a = speed[PiD.mot] * 100;
-	Serial_Tx(a);
-	
 	if (speed[PiD.mot] < 0.1){
 		speed[PiD.mot] = 0.0;
+	} else{
+		speed[PiD.mot] += speed[PiD.mot] * -0.2;
 	}
 	
+	int a;
+	a = speed[PiD.mot] * 1000;
+	Serial_Tx((int)a);
+	
 	if (speed[PiD.mot] < 3.0){
-		
-		wanted_speed[PiD.mot] = 2;
+
+		wanted_speed[PiD.mot] = 1;
 		
 		PiD.P = 0;
 		PiD.D = 0;
@@ -260,8 +262,8 @@ ISR(TIMER0_COMPA_vect){
 		
 		if ((wanted_speed[PiD.mot] != 0) || ((wanted_speed[PiD.mot] == 0) && (speed[PiD.mot] != 0))){
 			
-			speed[PiD.mot] = speed[PiD.mot] * RSP[PiD.mot].dir;
-			speed_error = setspeed - speed[PiD.mot];
+			//speed[PiD.mot] = speed[PiD.mot] * RSP[PiD.mot].dir;
+			speed_error = wanted_speed[PiD.mot] - speed[PiD.mot];
 			
 			PiD.P = speed_error * kp;
 			PiD.I[PiD.mot] += speed_error * ki;
@@ -278,17 +280,15 @@ ISR(TIMER0_COMPA_vect){
 			if(PiD.D > Dlim) PiD.D = Dlim;
 			if(PiD.D < -Dlim) PiD.D = -Dlim;
 			
-			PiD.correction = PiD.P + PiD.I[PiD.mot] + PiD.D;			// + DVR[PiD.mot].pwm
+			PiD.correction = PiD.P + PiD.I[PiD.mot] + PiD.D + DVR[PiD.mot].pwm;			// + DVR[PiD.mot].pwm
 			
 			if(PiD.correction > 1023)PiD.correction = 1023;
-			if(PiD.correction < -1023)PiD.correction = -1023;
-			
-			if(PiD.correction < 0){
-				PiD.correction *= -1;
-				DVR[PiD.mot].dir = -1;
-			}
+			if(PiD.correction < 0)PiD.correction = 0;
 			
 			DVR[PiD.mot].pwm = PiD.correction;
+			DVR[PiD.mot].dir = 0;
+			
+			//Serial_Tx(PiD.correction);
 			
 			DIS.temp = (speed[PiD.mot] * diametro * M_PI) / 1000;
 			DIS.trav[PiD.mot] += DIS.temp;
