@@ -301,63 +301,56 @@ ISR(TIMER0_COMPA_vect){
 }
 
 int main(void){
-
-	init_gpio();
-	init_intt();
+	
 	init_timer4();
 	init_pwm();
 	init_pid();
+	init_gpio();
+	init_intt();
 	init_serial();
 
 	for(int i=0;i<4;i++){
 		PiD.I[i] = 0;
 		DVR[i].pwm = 0;
-		DVR[i].dir = 1;
+		DVR[i].dir = -1;
 	}
 	
 	start_pwm();
 	
 	sei();
 	
-	while(1) {		
-		
+	while(1) {
+	
 		if(setdrv == 1){
+			
 			setdrv = 0;
 			OCR1B = DVR[0].pwm;
 			OCR1A = DVR[1].pwm;
 			OCR3B = DVR[2].pwm;
 			OCR3A = DVR[3].pwm;
 			
+			PORTJ = (1<<PJ2);
+			PORTA = (1<<PA5);
+			
 			if(DVR[0].dir==1){
-				PORTJ = (1<<PJ4)|(0<<PJ3);
-			}else if(DVR[0].dir==-1){
-				PORTJ = (0<<PJ4)|(1<<PJ3);
-			}else if(DVR[0].dir==0){
-				PORTJ = (1<<PJ4)|(1<<PJ3);
+				PORTJ |= (1<<PJ4)|(0<<PJ3);
+				}else{
+				PORTJ |= (0<<PJ4)|(1<<PJ3);
 			}
-			
 			if(DVR[1].dir==1){
-				PORTJ  = (0<<PJ1)|(1<<PJ0);
-			}else if(DVR[1].dir==-1){
-				PORTJ  = (1<<PJ1)|(0<<PJ0);
-			}else if(DVR[1].dir==0){
-				PORTJ  = (1<<PJ1)|(1<<PJ0);
+				PORTJ |= (0<<PJ1)|(1<<PJ0);
+				}else{
+				PORTJ |= (1<<PJ1)|(0<<PJ0);
 			}
-			
 			if(DVR[2].dir==1){
-				PORTA  = (0<<PA4)|(1<<PA3);
-			}else if(DVR[2].dir==-1){
-				PORTA  = (1<<PA4)|(0<<PA3);
-			}else if(DVR[2].dir==0){
-				PORTA  = (1<<PA4)|(1<<PA3);
+				PORTA |= (0<<PA4)|(1<<PA3);
+				}else{
+				PORTA |= (1<<PA4)|(0<<PA3);
 			}
-			
-			if(DVR[2].dir==1){
-				PORTA  = (1<<PA7)|(0<<PA6);
-			}else if(DVR[2].dir==-1){
-				PORTA  = (0<<PA7)|(1<<PA6);
-			}else if(DVR[2].dir==0){
-				PORTA  = (1<<PA7)|(1<<PA6);
+			if(DVR[3].dir==1){
+				PORTA |= (1<<PA7)|(0<<PA6);
+				}else{
+				PORTA |= (0<<PA7)|(1<<PA6);
 			}
 		}
 	}
