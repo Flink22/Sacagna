@@ -6,23 +6,19 @@
 
 #define n_mot 4
 
-#define kp 130.0
-#define ki 2.0
-#define kd 10.0
+#define kp 150.0
+#define ki 0.0
+#define kd 0.0
 #define diametro 69.0
 
-#define Plim 500.0
-#define Ilim 2.0
-#define Dlim 200.0
+#define Plim 600.0
+#define Ilim 200.0
+#define Dlim 100.0
 
 double speed[n_mot] = {0};
-double speed_error = {0};
+double speed_error = 0;
 double old_error[n_mot] = {0};
 double wanted_speed[n_mot] = {0};
-double setspeed;
-
-double dist_travelled;
-double dist_temp;
 
 int setdrv = 1;
 
@@ -36,7 +32,7 @@ typedef struct {
 	double P;
 	double I[n_mot];
 	double D;
-	int correction;
+	double correction;
 } def_pid;
 
 typedef struct {
@@ -48,26 +44,28 @@ typedef struct {
 
 typedef struct {
 	char dir;
-	unsigned int pwm;
+	int pwm;
 } def_driver;
+
+typedef struct {
+	unsigned char byte;
+} def_ser;
 
 def_dis DIS;
 def_pid PiD;
 def_readspeed RSP[4];
 def_driver DVR[4];
+def_ser SER;
 
-unsigned char USART_Receive( void )
-{
+unsigned char Serial_Rx(void) {
 	return UDR0;
 }
-
 
 void Serial_Tx(int data) {
 	while ( !( UCSR0A & (1<<UDRE0)) );
 	UDR0 = data;
-	
-	_delay_ms(1);
-	
+	data = 0;
+	_delay_us(10);
 }
 
 void init_gpio(){ //disattivo interrupt esterni e definisco entrate ed uscite
@@ -92,30 +90,28 @@ void init_intt(){ //definisco gli interrupt esterni e li attivo
 	
 	for(int i=0;i<4;i++){
 		RSP[i].curr = 65535;
-		RSP[i].old = 65535;
+		RSP[i].old = 10;
 	}
 
 }
 
 void init_timer4(){ //faccio partire il timer 4 in normal mode (presc. /8) per velocità motori
 
-	TCCR4A |= 0x00;
-	TCCR4B |= (1<<CS41)|(0<<CS40);
-	TCCR4C |= 0x00;
-
-	TCNT4 = 0;
+	TCCR4A = 0x00;
+	TCCR4B = (0<<CS42)|(1<<CS41)|(0<<CS40);
+	TCCR4C = 0x00;
 
 }
 
 void init_pwm(){ //pwm 10 bit con t/c1 e t/c3
 
-	TCCR1A |= (1<<WGM10)|(1<<WGM11);
-	TCCR1B |= (0<<WGM12);
+	TCCR1A = (1<<WGM10)|(1<<WGM11);
+	TCCR1B = (0<<WGM12);
 	TCCR1A |= (0<<COM1A0)|(1<<COM1A1);
 	TCCR1A |= (0<<COM1B0)|(1<<COM1B1);
 
-	TCCR3A |= (1<<WGM30)|(1<<WGM31);
-	TCCR3B |= (0<<WGM32);
+	TCCR3A = (1<<WGM30)|(1<<WGM31);
+	TCCR3B = (0<<WGM32);
 	TCCR3A |= (0<<COM3A0)|(1<<COM3A1);
 	TCCR3A |= (0<<COM3B0)|(1<<COM3B1);
 
@@ -123,8 +119,8 @@ void init_pwm(){ //pwm 10 bit con t/c1 e t/c3
 
 void start_pwm(){ //prescaler /64 per t/c1 e t/c3 + enable driver
 
-	PORTA = 0x20;
-	PORTJ = 0x04;
+	PORTA = (1<<PA5);
+	PORTJ = (1<<PJ2);
 
 	TCCR1B |= (0<<CS12)|(1<<CS11)|(1<<CS10);
 	TCCR3B |= (0<<CS32)|(1<<CS31)|(1<<CS30);
@@ -135,22 +131,19 @@ void init_serial(){
 	
 	UBRR0H = 0;
 	UBRR0L = 1;
-	UCSR0A = 0x00;
-	UCSR0B = 0x08;
+	UCSR0A = 0x80;
+	UCSR0B = 0x98;
 	UCSR0C = 0x06;
 	
 }
 
-void init_pid(){ //Abilito t/c 0 per fare pid ogni intervallo di tempo (4000 Hz, quindi 1000 Hz a motore)
+void init_pid(){ //Abilito t/c 0 per fare pid ogni intervallo di tempo (4000 Hz, quindi 100 Hz a motore)
 
-	TCCR0A = (1<<COM0A0)|(0<<COM0A1);
-	TCCR0B = (0<<CS02)|(1<<CS01)|(0<<CS00);
+	TCCR0A = (1<<WGM01);  //(1<<COM0A0)|(0<<COM0A1)| non dovrebbe servire
+	TCCR0B = (1<<CS02)|(0<<CS01)|(0<<CS00);
 	TIMSK0 = (1<<OCIE0A);
 	
-	OCR0A = 249;
-	
-	sei();
-	
+	OCR0A = 77;	
 }
 
 ISR(INT0_vect){
@@ -160,16 +153,14 @@ ISR(INT0_vect){
 	RSP[m].temp = TCNT4;
 
 	if((PINH&0x08)!=0){
-		RSP[m].dir = -1;
-		} else{
 		RSP[m].dir = 1;
+		} else{
+		RSP[m].dir = -1;
 	}
 	
-	if (RSP[m].temp > RSP[m].old)
 	RSP[m].curr = RSP[m].temp - RSP[m].old;
 
 	RSP[m].old = RSP[m].temp;
-
 }
 
 ISR(INT1_vect){
@@ -179,12 +170,11 @@ ISR(INT1_vect){
 	RSP[m].temp = TCNT4;
 
 	if((PINH&0x04)!=0){
-		RSP[m].dir = -1;
-		} else{
 		RSP[m].dir = 1;
+		} else{
+		RSP[m].dir = -1;
 	}
 	
-	if (RSP[m].temp > RSP[m].old)
 	RSP[m].curr = RSP[m].temp - RSP[m].old;
 
 	RSP[m].old = RSP[m].temp;
@@ -197,12 +187,11 @@ ISR(INT2_vect){
 	RSP[m].temp = TCNT4;
 
 	if((PINH&0x01)!=0){
-		RSP[m].dir = -1;
-		} else{
 		RSP[m].dir = 1;
+		} else{
+		RSP[m].dir = -1;
 	}
 	
-	if (RSP[m].temp > RSP[m].old)
 	RSP[m].curr = RSP[m].temp - RSP[m].old;
 
 	RSP[m].old = RSP[m].temp;
@@ -215,99 +204,94 @@ ISR(INT3_vect){
 	RSP[m].temp = TCNT4;
 
 	if((PINH&0x02)!=0){
-		RSP[m].dir = -1;
-		} else{
 		RSP[m].dir = 1;
+		} else{
+		RSP[m].dir = -1;
 	}
 	
-	if (RSP[m].temp > RSP[m].old)
 	RSP[m].curr = RSP[m].temp - RSP[m].old;
-
+	
 	RSP[m].old = RSP[m].temp;
 }
 
 ISR(TIMER0_COMPA_vect){
 	
 	PiD.mot ++;
-	if(PiD.mot >= 4){
+	if(PiD.mot > 3){
 		PiD.mot = 0;
 		setdrv = 1;
 	}
 	
-	speed[PiD.mot] = (((double)2000000.0) / (((double)RSP[PiD.mot].curr) * 990.0));
+	speed[PiD.mot] = 0.1;
+	speed[PiD.mot] = (((double)200000.0) / (((double)RSP[PiD.mot].curr) * 99.0));
 	
 	if (speed[PiD.mot] < 0.1){
-		speed[PiD.mot] = 0.0;
-	} else{
-		speed[PiD.mot] += speed[PiD.mot] * -0.2;
+		speed[PiD.mot] = 0.1;
 	}
-	
-	int a;
-	a = speed[PiD.mot] * 1000;
-	Serial_Tx((int)a);
 	
 	if (speed[PiD.mot] < 3.0){
 
-		wanted_speed[PiD.mot] = 1;
+		wanted_speed[PiD.mot] = 2.0;
 		
 		PiD.P = 0;
 		PiD.D = 0;
 		PiD.correction = 0;
 		
-		if ((wanted_speed[PiD.mot] != 0) || ((wanted_speed[PiD.mot] == 0) && (speed[PiD.mot] != 0))){
+		if (wanted_speed[PiD.mot]  != 0){
 			
-			//speed[PiD.mot] = speed[PiD.mot] * RSP[PiD.mot].dir;
 			speed_error = wanted_speed[PiD.mot] - speed[PiD.mot];
 			
 			PiD.P = speed_error * kp;
-			PiD.I[PiD.mot] += speed_error * ki;
-			PiD.D = (speed_error - old_error[PiD.mot]) * kd;
+			PiD.I[PiD.mot] = PiD.I[PiD.mot] + (speed_error * 0.01);
+			PiD.I[PiD.mot] = PiD.I[PiD.mot] * ki;
+			PiD.D = ((speed_error - old_error[PiD.mot]) / 0.01);
+			PiD.D = PiD.D * kd;
 			
 			old_error[PiD.mot] = speed_error;
 			
 			if(PiD.P > Plim) PiD.P = Plim;
 			if(PiD.P < -Plim) PiD.P = -Plim;
-			
 			if(PiD.I[PiD.mot] > Ilim) PiD.I[PiD.mot] = Ilim;
-			if(PiD.I[PiD.mot] < -Ilim) PiD.I[PiD.mot] = -Ilim;
-			
+			if(PiD.I[PiD.mot] < 0) PiD.I[PiD.mot] = -Ilim;
 			if(PiD.D > Dlim) PiD.D = Dlim;
 			if(PiD.D < -Dlim) PiD.D = -Dlim;
 			
-			PiD.correction = PiD.P + PiD.I[PiD.mot] + PiD.D + DVR[PiD.mot].pwm;			// + DVR[PiD.mot].pwm
+			PiD.correction = PiD.P + PiD.I[PiD.mot] + PiD.D;			// + DVR[PiD.mot].pwm
 			
 			if(PiD.correction > 1023)PiD.correction = 1023;
 			if(PiD.correction < 0)PiD.correction = 0;
 			
 			DVR[PiD.mot].pwm = PiD.correction;
-			DVR[PiD.mot].dir = 0;
-			
-			//Serial_Tx(PiD.correction);
+			Serial_Tx(PiD.correction / 10);
+			DVR[PiD.mot].dir = -1;
 			
 			DIS.temp = (speed[PiD.mot] * diametro * M_PI) / 1000;
 			DIS.trav[PiD.mot] += DIS.temp;
 			
-		}else{
+		}else if ((wanted_speed[PiD.mot] == 0) && (speed[PiD.mot] != 0)){
 			DVR[PiD.mot].pwm = 0;
-			DVR[PiD.mot].dir = 0;
 		}	
 	}
 }
 
+ISR(USART0_RX_vect){
+	SER.byte = UDR0;
+}
+
 int main(void){
-	
 	cli();
+	
 	init_timer4();
 	init_pwm();
 	init_pid();
 	init_gpio();
-	init_intt();
 	init_serial();
+	init_intt();
 
 	for(int i=0;i<4;i++){
 		PiD.I[i] = 0;
 		DVR[i].pwm = 0;
-		DVR[i].dir = -1;
+		DVR[i].dir = 1;
 	}
 	
 	start_pwm();
@@ -315,7 +299,7 @@ int main(void){
 	sei();
 	
 	while(1) {
-	
+		
 		if(setdrv == 1){
 			
 			setdrv = 0;
