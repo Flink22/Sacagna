@@ -56,19 +56,15 @@ def_pid PiD;
 def_readspeed RSP[4];
 def_driver DVR[4];
 
+unsigned char USART_Receive( void )
+{
+	return UDR0;
+}
+
+
 void Serial_Tx(int data) {
-	
-	unsigned char temp[4];
-	
-	for (int k=0; k<4; k++){
-		temp[k] = data%10;
-		data = data / 10;
-	}
-	
-	for (int k=0; k<4; k++){
-		while ( !( UCSR0A & (1<<UDRE0)) );
-		UDR0 = temp[k];
-	}
+	while ( !( UCSR0A & (1<<UDRE0)) );
+	UDR0 = data;
 	
 	_delay_ms(1);
 	
