@@ -72,8 +72,6 @@ void Serial_Tx(int data) {
 
 void init_gpio(){ //disattivo interrupt esterni e definisco entrate ed uscite
 
-	cli();
-
 	DDRA = 0xF8;
 	DDRJ = 0x8F;
 	
@@ -298,6 +296,7 @@ ISR(TIMER0_COMPA_vect){
 
 int main(void){
 	
+	cli();
 	init_timer4();
 	init_pwm();
 	init_pid();
