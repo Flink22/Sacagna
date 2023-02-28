@@ -23,7 +23,7 @@ def init():
         gpio.output(laser_SHDN[i],gpio.HIGH)
         sensor = vl6180.VL6180X(i2c)
         sensor._write_8(0x212, laser_ADDRESS[i])
-        time.sleep(0.1)
+        time.sleep(0.01)
     
 
 def read():
