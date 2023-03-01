@@ -59,9 +59,9 @@ class BNO055:
         return True
     
     def readAngle(self):
-        buf = self.readBytes(BNO055.VECTOR_EULER, 6)
-        xyz = struct.unpack('hhh', struct.pack('BBBBBB', buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]))
-        return tuple([i/16.0 for i in xyz])
+        buf = self.readBytes(BNO055.VECTOR_EULER, 2)
+        xyz = struct.unpack('h', struct.pack('BB', buf[0], buf[1]))
+        return tuple([i/16.0 for i in xyz])[0]
     
     def setMode(self, mode):
         self._mode = mode
