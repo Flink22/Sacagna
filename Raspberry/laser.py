@@ -24,10 +24,10 @@ class VL6180:
             time.sleep(0.1)
     
 
-    def read(self):
+    def read(self, n):
         for i in range(0, 5):
             laser_MM[i] = 0
-            for k in range(0, 2):
+            for k in range(n):
                 sensor = vl6180.VL6180X(i2c, address = laser_ADDRESS[i])
                 laser_MM[i] += sensor.range
             
