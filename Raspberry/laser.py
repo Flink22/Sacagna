@@ -24,7 +24,7 @@ class VL6180:
             time.sleep(0.1)
     
 
-    def read(self, n):
+    def read(self, n = 1):
         for i in range(0, 5):
             laser_MM[i] = 0
             for k in range(n):
