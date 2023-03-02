@@ -301,7 +301,11 @@ int main(void){
 	while(1) {
 		
 		if(setdrv == 1){
-			
+			for(int i=0;i<4;i++){
+				media += RSP[i].impulsi;
+			}
+			Serial_Tx(media / (4 * 10));
+			media = 0;
 			setdrv = 0;
 			OCR1B = DVR[0].pwm;
 			OCR1A = DVR[1].pwm;
