@@ -61,11 +61,20 @@ unsigned char Serial_Rx(void) {
 	return UDR0;
 }
 
-void Serial_Tx(int data) {
-	while ( !( UCSR0A & (1<<UDRE0)) );
-	UDR0 = data;
-	data = 0;
-	_delay_us(10);
+void Serial_Tx(unsigned int data) {
+	
+	unsigned char temp[4];
+	
+	for (int k=0; k<4; k++){
+		temp[k] = data%10;
+		data = data / 10;
+	}
+	
+	for (int k=0; k<4; k++){
+		while (!(UCSR0A&(1<<UDRE0)));
+		UDR0 = temp[k];
+		_delay_us(1);
+	}
 }
 
 void init_gpio(){ //disattivo interrupt esterni e definisco entrate ed uscite
