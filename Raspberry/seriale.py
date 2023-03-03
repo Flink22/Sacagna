@@ -16,12 +16,7 @@ class SerialeATmega:
             timeout = 0.001
         )
         self.error = "error"
-        self.noPort = "noPort"
-        gpio.setup(25,gpio.OUT)
-        gpio.setup(11,gpio.OUT)
-        gpio.output(25,gpio.LOW)
-        gpio.output(11,gpio.LOW)
-        
+        self.noPort = "noPort"        
     
     
     def check_port(self):
@@ -32,18 +27,19 @@ class SerialeATmega:
     
     
     
-    def read(self):
+    def read(self, size = 4):
         out = self.check_port()
         if out == 1:
             if(self.ser.in_waiting >= 0):
-                readbyte = self.ser.read(size = 1)
-                if (len(readbyte) != 1):
+                readbyte = self.ser.read(size)
+                if (len(readbyte) != size):
                     out = self.error
                 else:
-                    out = readbyte[0]
+                    out = readbyte[0] + readbyte[1] * 10 + readbyte[2] * 100 + readbyte[3] * 1000
         else:
             out = self.error
-        return out
+        if out != "error":
+            return int(out)
     
     
     
@@ -61,12 +57,13 @@ class SerialeATmega:
 
 if __name__ == '__main__':
     serial = SerialeATmega()
-    a = 70
     while True:
-        data = serial.read()
-        serial.write(a)
-        time.sleep(0.1)
-        print(data)
+        data = serial.write(11)
+        while(data < 137):
+            data = serial.read()
+            print(data)
+            print('------')
+            serial.clean()
+            time.sleep(0.01)
+        time.sleep(2)
         serial.clean()
-        print('------') 
-
