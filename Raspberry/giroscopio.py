@@ -1,7 +1,6 @@
 import smbus
 import time
 import struct
-import RPi.GPIO as gpio
 import board
 
 class BNO055:
@@ -79,8 +78,6 @@ class BNO055:
 
 if __name__ == '__main__':
     bno = BNO055()
-    gpio.setup(10,gpio.OUT)
-    gpio.output(10,gpio.LOW)
     if bno.begin() is not True:
         print("Error initializing device")
         exit()
