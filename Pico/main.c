@@ -4,9 +4,9 @@
 #include "hardware/gpio.h"
 
 typedef struct {
-	volatile int IN1;
+    volatile int IN1;
     volatile int IN2;
-	volatile int PWM;
+    volatile int PWM;
     volatile int PWM_CHAN;
     volatile uint slice;
 } def_set;
