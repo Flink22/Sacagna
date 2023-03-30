@@ -133,27 +133,24 @@ void mot_setup() {
 
 }
 
-void int_mot1(uint gpio, uint32_t events){
-	RSP[0].impulsi ++;
-}
-void int_mot2(uint gpio, uint32_t events){
-	RSP[1].impulsi ++;
-}
-void int_mot3(uint gpio, uint32_t events){
-	RSP[2].impulsi ++;
-}
-void int_mot4(uint gpio, uint32_t events){
-	RSP[3].impulsi ++;
+void enc_interrupt(uint gpio, uint32_t events){
+    int m;
+	if(gpio==RSP[0].ENC.IN1)m=0;
+    if(gpio==RSP[1].ENC.IN1)m=1;
+    if(gpio==RSP[2].ENC.IN1)m=2;
+    if(gpio==RSP[3].ENC.IN1)m=3;
+
+    RSP[m].impulsi ++;
 }
 
 void extint_setup() {
-	gpio_set_input_enabled(26, true);
-    gpio_set_input_enabled(27, true);
-    gpio_set_input_enabled(28, true);
-    gpio_set_irq_enabled_with_callback(RSP[0].ENC.IN1, GPIO_IRQ_EDGE_RISE, true, &int_mot1);
-    //gpio_set_irq_enabled_with_callback(RSP[1].ENC.IN1, GPIO_IRQ_EDGE_RISE, true, &int_mot2);
-    //gpio_set_irq_enabled_with_callback(RSP[2].ENC.IN1, GPIO_IRQ_EDGE_RISE, true, &int_mot3);
-    //gpio_set_irq_enabled_with_callback(RSP[3].ENC.IN1, GPIO_IRQ_EDGE_RISE, true, &int_mot4);
+	gpio_set_input_enabled(RSP[0].ENC.IN1, true);
+    gpio_set_input_enabled(RSP[1].ENC.IN1, true);
+    
+    gpio_set_irq_enabled_with_callback(RSP[0].ENC.IN1, GPIO_IRQ_EDGE_RISE, true, &enc_interrupt);
+    gpio_set_irq_enabled(RSP[1].ENC.IN1, GPIO_IRQ_EDGE_RISE, true);
+    gpio_set_irq_enabled(RSP[2].ENC.IN1, GPIO_IRQ_EDGE_RISE, true);
+    gpio_set_irq_enabled(RSP[3].ENC.IN1, GPIO_IRQ_EDGE_RISE, true);
 }
 
 int main() {
