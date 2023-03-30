@@ -147,6 +147,9 @@ void int_mot4(uint gpio, uint32_t events){
 }
 
 void extint_setup() {
+	gpio_set_input_enabled(26, true);
+    gpio_set_input_enabled(27, true);
+    gpio_set_input_enabled(28, true);
     gpio_set_irq_enabled_with_callback(RSP[0].ENC.IN1, GPIO_IRQ_EDGE_RISE, true, &int_mot1);
     //gpio_set_irq_enabled_with_callback(RSP[1].ENC.IN1, GPIO_IRQ_EDGE_RISE, true, &int_mot2);
     //gpio_set_irq_enabled_with_callback(RSP[2].ENC.IN1, GPIO_IRQ_EDGE_RISE, true, &int_mot3);
