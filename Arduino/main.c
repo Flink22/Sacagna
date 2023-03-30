@@ -5,35 +5,10 @@
 #include <util/delay.h>
 
 #define n_mot 4
+#define byteser 4
 
-#define kp 1500.0
-#define ki 50.0
-#define kd 70.0
-#define diametro 69.0
-
-#define Plim 500.0
-#define Ilim 10.0
-#define Dlim 300.0
-
-double speed[n_mot] = {0};
-double speed_error = 0;
-double old_error[n_mot] = {0};
-double wanted_speed[n_mot] = {0};
-
+int readcomplete;
 int setdrv = 1;
-
-typedef struct {
-	double trav[4];
-	double temp;
-} def_dis;
-
-typedef struct {
-	int mot;
-	double P;
-	double I[n_mot];
-	double D;
-	double correction;
-} def_pid;
 
 typedef struct {
 	unsigned long curr;
@@ -52,8 +27,6 @@ typedef struct {
 	unsigned char byte;
 } def_ser;
 
-def_dis DIS;
-def_pid PiD;
 def_readspeed RSP[4];
 def_driver DVR[4];
 def_ser SER;
@@ -62,11 +35,22 @@ unsigned char Serial_Rx(void) {
 	return UDR0;
 }
 
-void Serial_Tx(int data) {
-	while ( !( UCSR0A & (1<<UDRE0)) );
-	UDR0 = data;
-	data = 0;
-	_delay_us(10);
+void Serial_Tx(unsigned int data) {
+	
+	unsigned char temp[4];
+	
+	for (int k=0; k<4; k++){
+		temp[k] = data%10;
+		data = data / 10;
+	}
+	
+	for (int k=0; k<4; k++){
+		while (!(UCSR0A&(1<<UDRE0)));
+		UDR0 = temp[k];
+		_delay_us(1);
+	}
+	
+	_delay_ms(1);
 }
 
 void init_gpio(){ //disattivo interrupt esterni e definisco entrate ed uscite
@@ -90,17 +74,8 @@ void init_intt(){ //definisco gli interrupt esterni e li attivo
 	EIMSK = (1<<INT0)|(1<<INT1)|(1<<INT2)|(1<<INT3);
 	
 	for(int i=0;i<4;i++){
-		RSP[i].curr = 65535;
-		RSP[i].old = 0;
+		RSP[i].impulsi = 0;
 	}
-
-}
-
-void init_timer4(){ //faccio partire il timer 4 in normal mode (presc. /8) per velocità motori
-
-	TCCR4A = 0x00;
-	TCCR4B = (0<<CS42)|(1<<CS41)|(0<<CS40);
-	TCCR4C = 0x00;
 
 }
 
@@ -125,7 +100,35 @@ void start_pwm(){ //prescaler /64 per t/c1 e t/c3 + enable driver
 
 	TCCR1B |= (1<<CS12)|(0<<CS11)|(0<<CS10);
 	TCCR3B |= (1<<CS32)|(0<<CS31)|(0<<CS30);
-
+	
+	OCR1B = DVR[0].pwm * 1.1;
+	OCR1A = DVR[1].pwm * 1.1;
+	OCR3B = DVR[2].pwm;
+	OCR3A = DVR[3].pwm;
+	
+	PORTJ = (1<<PJ2);
+	PORTA = (1<<PA5);
+	
+	if(DVR[0].dir != 1){
+		PORTJ |= (1<<PJ4)|(0<<PJ3);
+		}else{
+		PORTJ |= (0<<PJ4)|(1<<PJ3);
+	}
+	if(DVR[1].dir==1){
+		PORTJ |= (0<<PJ1)|(1<<PJ0);
+		}else{
+		PORTJ |= (1<<PJ1)|(0<<PJ0);
+	}
+	if(DVR[2].dir==1){
+		PORTA |= (0<<PA4)|(1<<PA3);
+		}else{
+		PORTA |= (1<<PA4)|(0<<PA3);
+	}
+	if(DVR[3].dir==1){
+		PORTA |= (1<<PA7)|(0<<PA6);
+		}else{
+		PORTA |= (0<<PA7)|(1<<PA6);
+	}
 }
 
 void init_serial(){
@@ -138,180 +141,42 @@ void init_serial(){
 	
 }
 
-void init_pid(){ //Abilito t/c 0 per fare pid ogni intervallo di tempo (4000 Hz, quindi 100 Hz a motore)
-
-	TCCR0A = (1<<WGM01);  //(1<<COM0A0)|(0<<COM0A1)| non dovrebbe servire
-	TCCR0B = (1<<CS02)|(0<<CS01)|(0<<CS00);
-	TIMSK0 = (1<<OCIE0A);
-	
-	OCR0A = 77;	
-}
-
 ISR(INT0_vect){
-	
-	int m=0;
-	
-	RSP[m].temp = TCNT4;
-
-	if((PINH&0x08)!=0){
-		RSP[m].dir = 1;
-		} else{
-		RSP[m].dir = -1;
-	}
-	
-	RSP[m].curr = RSP[m].temp - RSP[m].old;
-
-	RSP[m].old = RSP[m].temp;
-	
-	RSP[m].impulsi++;
+	RSP[0].impulsi++;
 }
 
 ISR(INT1_vect){
-	
-	int m=1;
-	
-	RSP[m].temp = TCNT4;
-
-	if((PINH&0x04)!=0){
-		RSP[m].dir = 1;
-		} else{
-		RSP[m].dir = -1;
-	}
-	
-	RSP[m].curr = RSP[m].temp - RSP[m].old;
-
-	RSP[m].old = RSP[m].temp;
-	
-	RSP[m].impulsi++;
+	RSP[1].impulsi++;
 }
 
 ISR(INT2_vect){
-	
-	int m=3;
-	
-	RSP[m].temp = TCNT4;
-
-	if((PINH&0x01)!=0){
-		RSP[m].dir = 1;
-		} else{
-		RSP[m].dir = -1;
-	}
-	
-	RSP[m].curr = RSP[m].temp - RSP[m].old;
-
-	RSP[m].old = RSP[m].temp;
-	
-	RSP[m].impulsi++;
+	RSP[3].impulsi++;
 }
 
 ISR(INT3_vect){
-	
-	int m=2;
-	
-	RSP[m].temp = TCNT4;
-
-	if((PINH&0x02)!=0){
-		RSP[m].dir = 1;
-		} else{
-		RSP[m].dir = -1;
-	}
-	
-	RSP[m].curr = RSP[m].temp - RSP[m].old;
-	
-	RSP[m].old = RSP[m].temp;
-	
-	RSP[m].impulsi++;
-}
-
-ISR(TIMER0_COMPA_vect){
-	
-	PiD.mot ++;
-	if(PiD.mot > 3){
-		PiD.mot = 0;
-		setdrv = 1;
-	}
-	
-	speed[PiD.mot] = (((double)200000.0) / (unsigned long)((RSP[PiD.mot].curr) * 99));
-	
-	if (speed[PiD.mot] < 0.1){
-		speed[PiD.mot] = 0.0;
-	}
-	
-	if (speed[PiD.mot] < 3.0){
-		
-		PiD.P = 0;
-		PiD.D = 0;
-		PiD.correction = 0;
-		
-		if (wanted_speed[PiD.mot]  != 0){
-			
-			speed_error = wanted_speed[PiD.mot] - speed[PiD.mot];
-			PiD.P = speed_error * kp;
-			PiD.I[PiD.mot] = PiD.I[PiD.mot] + (speed_error * 0.01);
-			PiD.I[PiD.mot] = PiD.I[PiD.mot] * ki;
-			PiD.D = (speed_error - old_error[PiD.mot]) * 100;
-			PiD.D = PiD.D * kd;
-			
-			old_error[PiD.mot] = speed_error;
-			
-			if(PiD.P > Plim) PiD.P = Plim;
-			if(PiD.P < -Plim) PiD.P = -Plim;
-			if(PiD.I[PiD.mot] > Ilim) PiD.I[PiD.mot] = Ilim;
-			if(PiD.I[PiD.mot] < 0) PiD.I[PiD.mot] = -Ilim;
-			if(PiD.D > Dlim) PiD.D = Dlim;
-			if(PiD.D < -Dlim) PiD.D = -Dlim;
-			
-			PiD.correction = PiD.P + PiD.I[PiD.mot] + PiD.D + DVR[PiD.mot].pwm;			// + DVR[PiD.mot].pwm
-			
-			if(PiD.correction > 1023)PiD.correction = 1023;
-			if(PiD.correction < 0)PiD.correction = 0;
-
-			DVR[PiD.mot].pwm = PiD.correction;
-			DVR[PiD.mot].dir = -1;
-			
-			//DIS.temp = speed[PiD.mot] * diametro * M_PI * 0.01;
-			DIS.trav[PiD.mot] += speed[PiD.mot] * diametro * M_PI * 0.01;
-			
-			OCR1B = DVR[0].pwm;
-			OCR1A = DVR[1].pwm;
-			OCR3B = DVR[2].pwm;
-			OCR3A = DVR[3].pwm;
-			
-			
-			Serial_Tx(DVR[PiD.mot].pwm / 10);
-		}else if ((wanted_speed[PiD.mot] == 0) && (speed[PiD.mot] != 0)){
-			DVR[PiD.mot].pwm = 0;
-		}	
-	}
-	
+	RSP[2].impulsi++;
 }
 
 ISR(USART0_RX_vect){
 	SER.byte = UDR0;
-	
+	readcomplete = 1;
 	for(int i=0;i<4;i++){
-		DIS.trav[i] = 0;
-		wanted_speed[i] = 0.5;
-	}
-	
+		RSP[i].impulsi = 0;
+	}	
+	start_pwm();
 }
 
 int main(void){
 	cli();
 	
-	init_timer4();
 	init_pwm();
-	init_pid();
 	init_gpio();
 	init_serial();
 	init_intt();
 
 	for(int i=0;i<4;i++){
-		PiD.I[i] = 0;
 		DVR[i].pwm = 0;
-		DVR[i].dir = -1;
-		DIS.trav[i] = 0;
-		RSP[i].impulsi = 0;
+		DVR[i].dir = 1;
 	}
 	
 	start_pwm();
@@ -319,31 +184,49 @@ int main(void){
 	sei();
 	
 	while(1) {
-		if(setdrv != 2){
-			setdrv = 0;
-			PORTJ = (1<<PJ2);
-			PORTA = (1<<PA5);
-			
-			if(DVR[0].dir==1){
-				PORTJ |= (1<<PJ4)|(0<<PJ3);
-				}else{
-				PORTJ |= (0<<PJ4)|(1<<PJ3);
+		if(SER.byte == 11){
+			for(int i=0;i<4;i++){
+				DVR[i].pwm = 500;
+				DVR[0].dir = -1;
+				DVR[1].dir = -1;
+				DVR[2].dir = -1;
+				DVR[3].dir = -1;
 			}
-			if(DVR[1].dir==1){
-				PORTJ |= (0<<PJ1)|(1<<PJ0);
-				}else{
-				PORTJ |= (1<<PJ1)|(0<<PJ0);
+			}else if(SER.byte == 12){
+			for(int i=0;i<4;i++){
+				DVR[i].pwm = 500;
+				DVR[0].dir = 1;
+				DVR[1].dir = 1;
+				DVR[2].dir = -1;
+				DVR[3].dir = -1;
 			}
-			if(DVR[2].dir==1){
-				PORTA |= (0<<PA4)|(1<<PA3);
-				}else{
-				PORTA |= (1<<PA4)|(0<<PA3);
+			}else if(SER.byte == 15){
+			for(int i=0;i<4;i++){
+				DVR[i].pwm = 500;
+				DVR[0].dir = 1;
+				DVR[1].dir = 1;
+				DVR[2].dir = 1;
+				DVR[3].dir = 1;
 			}
-			if(DVR[3].dir==1){
-				PORTA |= (1<<PA7)|(0<<PA6);
-				}else{
-				PORTA |= (0<<PA7)|(1<<PA6);
+			}else if(SER.byte == 14){
+			for(int i=0;i<4;i++){
+				DVR[i].pwm = 500;
+				DVR[0].dir = -1;
+				DVR[1].dir = -1;
+				DVR[2].dir = 1;
+				DVR[3].dir = 1;
+			}
+			}else if(SER.byte == 10){
+			for(int i=0;i<4;i++){
+				DVR[i].pwm = 0;
+				RSP[i].impulsi = 0;
 			}
 		}
+		if(readcomplete == 1){
+			readcomplete = 0;
+			start_pwm();
+		}
+		
+		Serial_Tx(RSP[1].impulsi);
 	}
 }
