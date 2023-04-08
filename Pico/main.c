@@ -7,7 +7,7 @@
 #include "hardware/irq.h"
 #include "hardware/clocks.h"
 
-#define PLL_SYS_KHZ (200 * 1000)
+#define PLL_SYS_KHZ (125 * 1000)
 
 #define UART_ID uart0
 #define BAUD_RATE 1000000
