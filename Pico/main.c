@@ -21,12 +21,12 @@
 #define n_mot 4
 
 #define kp 5000.0
-#define ki 100.0
-#define kd 200.0
+#define ki 200.0
+#define kd 400.0
 #define diametro 69.0
 
-#define Plim 15000.0
-#define Ilim 100.0 //100.0
+#define Plim 17000.0
+#define Ilim 2000.0 //100.0
 #define Dlim 5000.0 //5000.0
 
 typedef struct {
@@ -273,10 +273,11 @@ void main_1() {
                     queue_remove_blocking(&dist_q, &distanza);
                     uint8_t temp;
                     uint16_t data;
-                    data = (int)(distanza * 10);
-                    for (int k=0; k<4; k++){
-                        temp = data % 10;
-                        data = data / 10;
+                    data = (int)distanza;
+
+                    for (int k=0; k<2; k++){
+                        temp = data % 100;
+                        data = data / 100;
                         uart_putc_raw(uart0, temp);
                     }
                 }
@@ -286,7 +287,7 @@ void main_1() {
             }
         }else{ //(BIT 7 == 1)
 
-            double velocità = (byte[5] * 16 + byte[4] * 8 + byte[3] * 4 + byte[2] * 2 + byte[1]) / 20;
+            double velocità = (byte[5] * 16 + byte[4] * 8 + byte[3] * 4 + byte[2] * 2 + byte[1]) / 20.0;
             int8_t direzione = byte[0] == 1 ? 1 : velocità == 0.0 ? 0 : -1;
 
             if(byte[6] == 0){ //MOT SX
@@ -339,7 +340,7 @@ int main() {
         queue_remove_blocking(&pid_q, &start);
         
         PID.mot ++;
-        if(PID.mot >= 4){
+        if (PID.mot >= 4) {
             PID.mot = 0;
         }
 
@@ -347,16 +348,16 @@ int main() {
         queue_try_remove(&dir_q[PID.mot], &wanted_dir[PID.mot]);
         
         speed[PID.mot] = (((double)1000000.0) / (((double)RSP[PID.mot].curr) * 990.0));
-        if (speed[PID.mot] < 0.1){
+        if (speed[PID.mot] < 0.1) {
             speed[PID.mot] = 0;
         }
         
-        if (speed[PID.mot] < 2.0){		
+        if (speed[PID.mot] < 2.0) {		
             PID.P = 0;
             PID.D = 0;
             PID.correction = 0;
             
-            if (wanted_speed[PID.mot]  != 0){
+            if (wanted_speed[PID.mot]  != 0) {
                 speed_error = wanted_speed[PID.mot] - speed[PID.mot];
                 
                 PID.P = speed_error * kp;
@@ -373,31 +374,32 @@ int main() {
 
                 PID.correction = PID.correction > 25000 ? 25000 : PID.correction < 0 ? 0 : PID.correction;
                 PID.pwm[PID.mot] = PID.correction;
-
-            } else{
+            }else{
                 PID.pwm[PID.mot] = 0;
 
             }
             driver_set(PID.mot, wanted_dir[PID.mot], PID.pwm[PID.mot]);
             
-            DIS.trav[PID.mot] += speed[PID.mot] * 0.002 * 69 * M_PI;
-            DIS.temp = 100.0;
-
             uint8_t reset = 0;
             queue_try_remove(&reset_q, &reset);
 
-            for(int i=0;i<4;i++){
-                if (DIS.trav[i] < DIS.temp)DIS.temp = DIS.trav[i];
-                if (reset == 1){
-                    DIS.trav[i] = 0;
-                    wanted_speed[i] = 0;
+            if (reset == 0) {
+                DIS.trav[PID.mot] += speed[PID.mot] * 0.002 * 69 * M_PI;
+                DIS.temp = 10000.0;
+
+                for(int i=0;i<4;i++){
+                    if (DIS.trav[i] < DIS.temp)DIS.temp = DIS.trav[i];
+                }
+                queue_try_add(&dist_q, &DIS.temp);
+
+            }else{
+                for(int i=0;i<4;i++){
+                    DIS.trav[i] = 0.0;
+                    wanted_speed[i] = 0.0;
                     wanted_dir[i] = 0;
                     RSP[i].curr = 50000;
                 }
             }
-            
-            queue_try_add(&dist_q, &DIS.trav[PID.mot]);
         }
-
     }    
 }
