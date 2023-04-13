@@ -20,14 +20,11 @@
 
 #define n_mot 4
 
-#define kp 5000.0
-#define ki 200.0
-#define kd 400.0
+#define kp 50000.0
+#define ki 1000.0
+#define kd 0.0
 #define diametro 69.0
 
-#define Plim 17000.0
-#define Ilim 2000.0 //100.0
-#define Dlim 5000.0 //5000.0
 
 typedef struct {
     volatile uint IN1;
@@ -270,10 +267,10 @@ void main_1() {
             if(byte[6] == 0){
                 if(byte[5] != 0){
                     double distanza;
-                    queue_remove_blocking(&dist_q, &distanza);
+                    queue_try_remove(&dist_q, &distanza);
                     uint8_t temp;
                     uint16_t data;
-                    data = (int)distanza;
+                    data = (int)(distanza*10.0);
 
                     for (int k=0; k<2; k++){
                         temp = data % 100;
@@ -282,6 +279,8 @@ void main_1() {
                     }
                 }
             }else{
+                double marti = 0.0;
+                queue_remove_blocking(&dist_q, &marti);
                 int8_t resett = 1;
                 queue_add_blocking(&reset_q, &resett);
             }
@@ -350,6 +349,8 @@ int main() {
         speed[PID.mot] = (((double)1000000.0) / (((double)RSP[PID.mot].curr) * 990.0));
         if (speed[PID.mot] < 0.1) {
             speed[PID.mot] = 0;
+        } else{
+            speed[PID.mot] += speed[PID.mot] * -0.01;
         }
         
         if (speed[PID.mot] < 2.0) {		
@@ -366,11 +367,7 @@ int main() {
                 
                 PID.old_error[PID.mot] = speed_error;
                 
-                PID.P = PID.P > Plim ? Plim : PID.P < -Plim ? -Plim : PID.P;
-                PID.I[PID.mot] = PID.I[PID.mot] > Ilim ? Ilim : PID.I[PID.mot] < -Ilim ? -Ilim : PID.I[PID.mot];
-                PID.D = PID.D > Dlim ? Dlim : PID.D < -Dlim ? -Dlim : PID.D;
-                
-                PID.correction = PID.P + PID.I[PID.mot] + PID.D + PID.pwm[PID.mot];
+                PID.correction = PID.P + PID.I[PID.mot] + PID.D;
 
                 PID.correction = PID.correction > 25000 ? 25000 : PID.correction < 0 ? 0 : PID.correction;
                 PID.pwm[PID.mot] = PID.correction;
@@ -393,10 +390,9 @@ int main() {
                 queue_try_add(&dist_q, &DIS.temp);
 
             }else{
+                queue_try_add(&dist_q, 0);
                 for(int i=0;i<4;i++){
                     DIS.trav[i] = 0.0;
-                    wanted_speed[i] = 0.0;
-                    wanted_dir[i] = 0;
                     RSP[i].curr = 50000;
                 }
             }
