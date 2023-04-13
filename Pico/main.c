@@ -224,7 +224,7 @@ void uart_setup() {
 }
 
 uint serv_getduty(int ang) {
-    int duty = ((ang / 18.0) * 125.0) + 1250;
+    int duty = ((ang / 18.0) * 125.0) + 1875;
     return duty;
 }
 
