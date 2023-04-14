@@ -98,5 +98,5 @@ if __name__ == '__main__':
         exit()
     time.sleep(1)
     while True:
-        print(apds.readDistance())
+        print(vl.readDistance())
         time.sleep(0.01)
