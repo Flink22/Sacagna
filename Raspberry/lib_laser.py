@@ -85,8 +85,11 @@ class VL6180X:
         buf = self.readBytes(VL6180X.VL6180X_DATA)
         return buf[0]
     
-    def readBytes(self, register, numBytes=1):
-        return self._bus.read_i2c_block_data(self._address, register, numBytes)
+    def changeAddress(self, laddress = self._address):
+        writeBytes(0x212, laddress)
+    
+    def readBytes(self, laddress = self._address, register, numBytes=1):
+        return self._bus.read_i2c_block_data(laddress, register, numBytes)
     
     def writeBytes(self, register, byteVals):
         return self._bus.write_i2c_block_data(self._address, register, byteVals)
