@@ -1,36 +1,43 @@
-import RPi.GPIO as gpio
+import RPi.GPIO as GPIO
 import board
-import busio
 import time
 import adafruit_vl6180x as vl6180
 
-laser_SHDN = [23, 24, 20, 21, 18]
-laser_ADDRESS = [0x20, 0x21, 0x22, 0x23, 0x24]
-laser_MM = [0, 0, 0, 0, 0]
-i2c = busio.I2C(board.SCL, board.SDA)
+i2c = board.I2C()
+
+class sensor:
+    misura = None
+    def define(self, pin = -1, address = -1):
+        self.pin = pin
+        self.address = address
 
 class VL6180:
     def __init__(self):
-        gpio.setup(10,gpio.OUT)
-        gpio.output(10,gpio.LOW)
-        for i in range(0, 5):
-            gpio.setup(laser_SHDN[i],gpio.OUT)
-            gpio.output(laser_SHDN[i],gpio.LOW)
+        
+        self.laser = [sensor() for i in range(5)]
+        self.laser[0].define(pin = 23, address = 0x20)
+        self.laser[1].define(pin = 24, address = 0x21)
+        self.laser[2].define(pin = 20, address = 0x22)
+        self.laser[3].define(pin = 21, address = 0x23)
+        self.laser[4].define(pin = 18, address = 0x24)
         
         for i in range(0, 5):
-            gpio.output(laser_SHDN[i],gpio.HIGH)
-            sensor = vl6180.VL6180X(i2c)
-            sensor._write_8(0x212, laser_ADDRESS[i])
+            GPIO.setup(self.laser[i].pin,GPIO.OUT)
+            GPIO.output(self.laser[i].pin,GPIO.LOW)
+        
+        for i in range(0, 5):
+            GPIO.output(self.laser[i].pin,GPIO.HIGH)
+            ls = vl6180.VL6180X(i2c)
+            ls._write_8(0x212, self.laser[i].address)
             time.sleep(0.1)
-    
+            self.laser[i].misura = vl6180.VL6180X(i2c, self.laser[i].address)
+        print("Laser INIT finito")
 
-    def read(self, n = 1):
-        for i in range(0, 5):
-            laser_MM[i] = 0
-            for k in range(n):
-                sensor = vl6180.VL6180X(i2c, address = laser_ADDRESS[i])
-                laser_MM[i] += sensor.range
-            
-            laser_MM[i] = laser_MM[i]/2
-        
-        return laser_MM
+    def read(self , n):
+        misura = self.laser[n].misura.range
+        return misura
+
+if __name__ == '__main__':
+    laser = VL6180()
+    for i in range(5):
+        print(laser.read(i))
