@@ -27,6 +27,7 @@ class VL6180:
         
         for i in range(0, 5):
             GPIO.output(self.laser[i].pin,GPIO.HIGH)
+            time.sleep(0.1)
             ls = vl6180.VL6180X(i2c)
             ls._write_8(0x212, self.laser[i].address)
             time.sleep(0.1)
