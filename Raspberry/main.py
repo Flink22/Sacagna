@@ -108,14 +108,14 @@ while True:
             bno.begin()
             bno_ANG = bno.readAngleRot()
             if (ang_DX > 0):
-                ser.writeMot(0.7, 0.7, 1, 0)
+                ser.writeMot(0.3, 0.3, 1, 0)
                 ang_DX = ang_DX - 2
                 while (bno_ANG < ang_DX) or (bno_ANG > 350):
                     bno_ANG = bno.readAngleRot()
             
             else:
                 ang_DX = ang_DX + 362
-                ser.writeMot(0.7, 0.7, 0, 1)
+                ser.writeMot(0.3, 0.3, 0, 1)
                 while (bno_ANG < 10) or (bno_ANG > ang_DX):
                     bno_ANG = bno.readAngleRot()
         
@@ -152,14 +152,14 @@ while True:
     elif laser.read(0) > muro:
         direzione = 1
         ang_attuale += 0
-    elif ((laser.read(3) > muro) or (laser.read(4) > muro)):
+    elif ((laser.read(3) > muro) and (laser.read(4) > muro)):
         direzione = 4
         ang_attuale += 270
     else:
         direzione = 3
         ang_attuale += 180
     
-    if ang_attuale > 360:
+    if ang_attuale >= 360:
         ang_attuale -= 360
     elif ang_attuale < 0:
         ang_attuale += 360
@@ -202,6 +202,9 @@ while True:
     if (apds.readC()<50):
         print("Negro")
         mv.indietro(7)
+        yNow = yStart
+        xNow = xStart
+        ang_attuale += 180
         
         bno.begin()
         print("Ruoto di 180 gradi a destra")
