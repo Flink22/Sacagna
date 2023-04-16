@@ -214,7 +214,7 @@ void mot_setup() {
 }
 
 void uart_setup() {
-    uart_init(uart0, 500000);
+    uart_init(uart0, 1000000);
     gpio_set_function(TX, GPIO_FUNC_UART);
     gpio_set_function(RX, GPIO_FUNC_UART);
     uart_set_format(uart0, DATA_BITS, STOP_BITS, PARITY);
@@ -277,7 +277,7 @@ void main_1() {
                     for (int k=0; k<2; k++){
                         temp = data % 100;
                         data = data / 100;
-                        uart_putc_raw(uart0, temp);
+                        uart_putc(uart0, temp);
                     }
                 }
             }else{
