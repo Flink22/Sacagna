@@ -20,11 +20,14 @@
 
 #define n_mot 4
 
-#define kp 50000.0
-#define ki 1000.0
-#define kd 0.0
+#define kp 7000.0
+#define ki 200.0
+#define kd 400.0
 #define diametro 69.0
 
+#define Plim 25000.0
+#define Ilim 2000.0 //100.0
+#define Dlim 5000.0 //5000.0
 
 typedef struct {
     volatile uint IN1;
@@ -112,7 +115,7 @@ void var_setup() {
     DVR[0].IN2 = 4;
     DVR[1].IN2 = 6;
     DVR[2].IN2 = 9;
-    DVR[3].IN2 = 1;
+    DVR[3].IN2 = 12;
 
     RSP[0].ENC.IN1 = 26;
     RSP[1].ENC.IN1 = 28;
@@ -144,10 +147,10 @@ void var_setup() {
     PID.I[2] = 0;
     PID.I[3] = 0;
 
-    RSP[0].curr = 50000;
-    RSP[1].curr = 50000;
-    RSP[2].curr = 50000;
-    RSP[3].curr = 50000;
+    RSP[0].curr = 4000000000;
+    RSP[1].curr = 4000000000;
+    RSP[2].curr = 4000000000;
+    RSP[3].curr = 4000000000;
 
     RSP[0].old = 0;
     RSP[1].old = 0;
@@ -159,10 +162,10 @@ void var_setup() {
     RSP[2].impulsi = 0;
     RSP[3].impulsi = 0;
 
-    DVR[0].corr = 1;
-    DVR[1].corr = 1;
+    DVR[0].corr = -1;
+    DVR[1].corr = -1;
     DVR[2].corr = -1;
-    DVR[3].corr = 1;
+    DVR[3].corr = -1;
 
     TX = 0;
     RX = 1;
@@ -211,7 +214,7 @@ void mot_setup() {
 }
 
 void uart_setup() {
-    uart_init(uart0, 1000000);
+    uart_init(uart0, 500000);
     gpio_set_function(TX, GPIO_FUNC_UART);
     gpio_set_function(RX, GPIO_FUNC_UART);
     uart_set_format(uart0, DATA_BITS, STOP_BITS, PARITY);
@@ -225,7 +228,7 @@ uint serv_getduty(int ang) {
     return duty;
 }
 
-void driver_set(int mot, int dir, int pwm) {
+void driver_set(int mot, int8_t dir, int pwm) {
     dir = dir * DVR[mot].corr;
     if (dir == 1){
         gpio_put(DVR[mot].IN1, 1);
@@ -257,7 +260,6 @@ void main_1() {
     while(1){
         buf = 0;
         uart_read_blocking(uart0, &buf, 1);
-
         for(int i=0;i<8;i++){
             byte[i] = buf % 2;
             buf = buf / 2;
@@ -281,22 +283,32 @@ void main_1() {
             }else{
                 double marti = 0.0;
                 queue_remove_blocking(&dist_q, &marti);
+                marti = 0.0;
                 int8_t resett = 1;
                 queue_add_blocking(&reset_q, &resett);
+                queue_add_blocking(&dist_q, &marti);
             }
         }else{ //(BIT 7 == 1)
 
-            double velocità = (byte[5] * 16 + byte[4] * 8 + byte[3] * 4 + byte[2] * 2 + byte[1]) / 20.0;
-            int8_t direzione = byte[0] == 1 ? 1 : velocità == 0.0 ? 0 : -1;
+            double velocita = (byte[5] * 16 + byte[4] * 8 + byte[3] * 4 + byte[2] * 2 + byte[1]) / 20.0;
+            int8_t direzione = 1;
+
+            if (byte[0] == 1) {
+                direzione = 1;
+            } else if(velocita <= 0.1){
+                direzione = 0;
+            } else{
+                direzione = -1;
+            }
 
             if(byte[6] == 0){ //MOT SX
-                queue_add_blocking(&speed_q[0], &velocità);
-                queue_add_blocking(&speed_q[1], &velocità);
+                queue_add_blocking(&speed_q[0], &velocita);
+                queue_add_blocking(&speed_q[1], &velocita);
                 queue_add_blocking(&dir_q[0], &direzione);
                 queue_add_blocking(&dir_q[1], &direzione);
             }else{ //MOT DX
-                queue_add_blocking(&speed_q[2], &velocità);
-                queue_add_blocking(&speed_q[3], &velocità);
+                queue_add_blocking(&speed_q[2], &velocita);
+                queue_add_blocking(&speed_q[3], &velocita);
                 queue_add_blocking(&dir_q[2], &direzione);
                 queue_add_blocking(&dir_q[3], &direzione);
             }
@@ -313,7 +325,7 @@ int main() {
     var_setup();
     mot_setup();
     uart_setup();
-    
+
     SERVO_PWM = serv_getduty(0);
     pwm_set_chan_level(slice_ser, PWM_CHAN_B, SERVO_PWM);
 
@@ -328,11 +340,20 @@ int main() {
     add_repeating_timer_us(-500, pid, NULL, &timerpid);
     queue_init(&pid_q, sizeof(uint8_t), 1);
     
+    double speedtemp;
     double speed[n_mot] = {0};
     double speed_error = 0;
     double wanted_speed[n_mot] = {0};
     int wanted_dir[n_mot] = {0};
     uint8_t start;
+
+    for(int i=0;i<4;i++){
+        wanted_speed[PID.mot] = 0.0;
+        speed[PID.mot] = 0.0;
+        DIS.trav[i] = 0.0;
+        RSP[i].curr = 4000000000; 
+        RSP[i].impulsi = 0;
+    }
 
     while(1) {
 
@@ -346,55 +367,62 @@ int main() {
         queue_try_remove(&speed_q[PID.mot], &wanted_speed[PID.mot]);
         queue_try_remove(&dir_q[PID.mot], &wanted_dir[PID.mot]);
         
-        speed[PID.mot] = (((double)1000000.0) / (((double)RSP[PID.mot].curr) * 990.0));
-        if (speed[PID.mot] < 0.1) {
-            speed[PID.mot] = 0;
+        speedtemp = (((double)1000000.0) / (((double)RSP[PID.mot].curr) * 680.0));
+        printf("\n%f", speed[PID.mot]);
+
+        if (speedtemp < 2.0) {
+            speed[PID.mot] = speedtemp;
+        } else if (speed[PID.mot] < 0.01) {
+            speed[PID.mot] = 0.0;
+            RSP[PID.mot].curr = 4000000000;
         } else{
             speed[PID.mot] += speed[PID.mot] * -0.01;
         }
+
+        PID.P = 0;
+        PID.D = 0;
+        PID.correction = 0;
         
-        if (speed[PID.mot] < 2.0) {		
-            PID.P = 0;
-            PID.D = 0;
-            PID.correction = 0;
+        if (wanted_speed[PID.mot]  != 0) {
+            speed_error = wanted_speed[PID.mot] - speed[PID.mot];
             
-            if (wanted_speed[PID.mot]  != 0) {
-                speed_error = wanted_speed[PID.mot] - speed[PID.mot];
-                
-                PID.P = speed_error * kp;
-                PID.I[PID.mot] += speed_error * ki;
-                PID.D = ((speed_error - PID.old_error[PID.mot]) / 0.002)* kd;
-                
-                PID.old_error[PID.mot] = speed_error;
-                
-                PID.correction = PID.P + PID.I[PID.mot] + PID.D;
+            PID.P = speed_error * kp;
+            PID.I[PID.mot] += speed_error * ki;
+            PID.D = ((speed_error - PID.old_error[PID.mot]) / 0.002)* kd;
+            
+            PID.old_error[PID.mot] = speed_error;
+            
+            PID.P = PID.P > Plim ? Plim : PID.P < -Plim ? -Plim : PID.P;
+            PID.I[PID.mot] = PID.I[PID.mot] > Ilim ? Ilim : PID.I[PID.mot] < -Ilim ? -Ilim : PID.I[PID.mot];
+            PID.D = PID.D > Dlim ? Dlim : PID.D < -Dlim ? -Dlim : PID.D;
+            
+            PID.correction = PID.P + PID.I[PID.mot] + PID.D + PID.pwm[PID.mot];
 
-                PID.correction = PID.correction > 25000 ? 25000 : PID.correction < 0 ? 0 : PID.correction;
-                PID.pwm[PID.mot] = PID.correction;
-            }else{
-                PID.pwm[PID.mot] = 0;
+            PID.correction = PID.correction > 25000 ? 25000 : PID.correction < 0 ? 0 : PID.correction;
+            PID.pwm[PID.mot] = PID.correction;
+        }else{
+            PID.pwm[PID.mot] = 0;
+        }
+        driver_set(PID.mot, wanted_dir[PID.mot], PID.correction);
+        
+        uint8_t reset = 0;
+        queue_try_remove(&reset_q, &reset);
 
+        if (reset == 0) {
+            DIS.trav[PID.mot] += speed[PID.mot] * 0.002 * 69 * M_PI;
+            DIS.temp = 10000.0;
+
+            for(int i=0;i<4;i++){
+                if (DIS.trav[i] < DIS.temp)DIS.temp = DIS.trav[i];
             }
-            driver_set(PID.mot, wanted_dir[PID.mot], PID.pwm[PID.mot]);
-            
-            uint8_t reset = 0;
-            queue_try_remove(&reset_q, &reset);
+            queue_try_add(&dist_q, &DIS.temp);
 
-            if (reset == 0) {
-                DIS.trav[PID.mot] += speed[PID.mot] * 0.002 * 69 * M_PI;
-                DIS.temp = 10000.0;
-
-                for(int i=0;i<4;i++){
-                    if (DIS.trav[i] < DIS.temp)DIS.temp = DIS.trav[i];
-                }
-                queue_try_add(&dist_q, &DIS.temp);
-
-            }else{
-                queue_try_add(&dist_q, 0);
-                for(int i=0;i<4;i++){
-                    DIS.trav[i] = 0.0;
-                    RSP[i].curr = 50000;
-                }
+        }else{
+            for(int i=0;i<4;i++){
+                speed[PID.mot] = 0.0;
+                DIS.trav[i] = 0.0;
+                RSP[i].curr = 4000000000; 
+                RSP[i].impulsi = 0;
             }
         }
     }    
