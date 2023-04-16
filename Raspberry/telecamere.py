@@ -11,41 +11,43 @@ class cameras:
         self.col = colors()
         
         self.exposuretime = 500 #va da 78 a 1250
-        self.cam = 1;
+        self.cam = 0;
         
-        self.camdx = cv.VideoCapture(0)
-        self.camdx.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
-        self.camdx.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
-        self.camdx.set(cv.CAP_PROP_AUTO_EXPOSURE, 1)
-        self.camdx.set(cv.CAP_PROP_EXPOSURE, self.exposuretime)
+        self.cam = cv.VideoCapture(self.cam)
+        self.cam.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
+        self.cam.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+        self.cam.set(cv.CAP_PROP_AUTO_EXPOSURE, 1)
+        self.cam.set(cv.CAP_PROP_EXPOSURE, self.exposuretime)
         
-        if not self.camdx.isOpened():
-            print("Telecamera DX Error")
+        if not self.cam.isOpened():
+            print("Telecamera SX Error")
     
-    def read(self, check=True, on=True):
+    def main(self, check = True):
         try:
-            while on == True:
+            while True:
                 
-                ret, frame = self.camdx.read()
+                #queue get no wait
                 
-                frame = frame[200:720, 200:1080]
+                ret, frame = self.cam.read()
+                
+                frame = frame[200:700, 200:1080]
                 frame = cv.resize(frame, (320, 240), interpolation= cv.INTER_LINEAR)
                 
-                blur = cv.GaussianBlur(frame,(7,7),0)
-                ret,thresh = cv.threshold(blur,100,255,cv.THRESH_BINARY)
+                blur = cv.GaussianBlur(frame, (7,7), 0)
                 
                 if check == True:
-                    lframe, n_d = self.let.find(thresh, frame)
+                    cframe, n_d = self.col.find(blur, frame)
                     if n_d == -1:
-                        col.find(thresh)
-                    
-                    if n_d == 0:
+                        lframe, n_d = self.let.find(blur, frame)
+                        cv.imshow('lettere', lframe)
+                    print(n_d)
                 
-                cv.imshow('lettere', l)
+                
+                cv.imshow('colori', cframe)
                 cv.imshow('frame', frame)
 #                 cv.imshow('thresh', thresh)
                 
-                check = 0
+                check = True 
 
                 if cv.waitKey(1) & 0xFF == ord('q'):
                     break
@@ -54,8 +56,8 @@ class cameras:
             self.close()
     
     def close(self):
-        self.camdx.release()
+        self.cam.release()
 
 if __name__ == '__main__':
     tel = cameras()
-    tel.read()
+    tel.main()
