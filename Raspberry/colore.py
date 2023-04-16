@@ -1,10 +1,9 @@
 import smbus
 import time
 import struct
-import board
 
 class APDS9960:
-    APDS9960_ADDRESS = 0x39
+    APDS9960_ADDRESS = 0x29
     APDS9960_ID      = 0xAB
     APDS9960_CHIP_ID_ADDR = 0x92
     
@@ -25,7 +24,7 @@ class APDS9960:
     APDS9960_BDATAL  = 0x9A
     APDS9960_BDATAH  = 0x9B
     
-    def __init__(self, sensorId=-1, address=APDS9960_ADDRESS):
+    def __init__(self, sensorId=-1, address=0x39):
         self._sensorId = sensorId
         self._address = address
     
@@ -46,10 +45,15 @@ class APDS9960:
         time.sleep(0.05)
         return True
     
-    def readColor(self):
-        buf = self.readBytes(APDS9960.APDS9960_CDATAL, 8)
-        xyz = struct.unpack('hhhh', struct.pack('BBBBBBBB', buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]))
-        return tuple([i for i in xyz])
+    def readC(self):
+        buf = self.readBytes(APDS9960.APDS9960_CDATAL, 2)
+        clear = struct.unpack('h', struct.pack('BB', buf[0], buf[1]))
+        return clear[0]
+    
+    def readB(self):
+        buf = self.readBytes(APDS9960.APDS9960_BDATAL, 2)
+        blue = struct.unpack('h', struct.pack('BB', buf[0], buf[1]))
+        return blue[0]
     
     def readBytes(self, register, numBytes=1):
         return self._bus.read_i2c_block_data(self._address, register, numBytes)
@@ -64,5 +68,5 @@ if __name__ == '__main__':
         exit()
     time.sleep(1)
     while True:
-        print(apds.readColor())
+        print(apds.readB())
         time.sleep(0.01)
