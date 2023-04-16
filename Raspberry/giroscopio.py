@@ -12,6 +12,7 @@ class BNO055:
     OPERATION_MODE_IMUPLUS 	= 0X08
     
     VECTOR_EULER 			= 0x1A
+	BNO055_LINEAR_ACCEL_DATA_X_LSB_ADDR = 0x28
     
     BNO055_PAGE_ID_ADDR 	= 0X07
     BNO055_CHIP_ID_ADDR 	= 0x00
@@ -70,6 +71,11 @@ class BNO055:
     def readAngleInc(self):
         buf = self.readBytes(BNO055.VECTOR_EULER, 6)
         xyz = struct.unpack('h', struct.pack('BB', buf[2], buf[3]))
+        return xyz[0]/16.0
+    
+    def sbatto(self):
+        buf = self.readBytes(BNO055.BNO055_LINEAR_ACCEL_DATA_X_LSB_ADDR, 6)
+		xyz = struct.unpack('h', struct.pack('BB', buf[0], buf[1]))
         return xyz[0]/16.0
     
     def setMode(self, mode):
