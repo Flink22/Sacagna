@@ -3,65 +3,61 @@ import board
 import busio
 import math
 import time
-from adafruit_apds9960.apds9960 import APDS9960
-from adafruit_apds9960 import colorutility
-i2c = board.I2C()
 
 delay = 1.2
 avanti = 190
 dietro = 100
-impulsi =1250
-muro = 130
-apds = APDS9960(i2c)
-apds.enable_color = True
+impulsi = 2740
+muro = 170
 
 
 from laser import VL6180
 from giroscopio import BNO055
-# from led import LED
-# from telecamere import cameras
-# from lettere import letters
-from seriale import SerialeATmega
+from colore import APDS9960
+from led import LED
+from seriale import SERIALEPICO
+from finecorsa import FINECORSA
+from movimenti import MOVIMENTI
 
-laser = VL6180()
+ser = SERIALEPICO()
+ser.writeMot()
+
 bno = BNO055()
-# led = LED() dvcsxa
-# cam = cameras()
-# let = letters()
-ser = SerialeATmega()
+laser = VL6180()
+apds = APDS9960()
+led = LED()
+fc = FINECORSA()
 
-laser_MM = [0, 0, 0, 0, 0]
+mv = MOVIMENTI()
 
 ang_attuale = 0
-GPIO.setup(12, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+led.blink(1)
 
 if bno.begin() is not True:
-    print("Error initializing device")
+    print("Error initializing BNO")
+    exit()
+
+if apds.begin() is not True:
+    print("Error initializing APDS")
     exit()
 
 while True:
-#     cam.read()
-    laser_MM = laser.read(2)
-    if (((laser_MM[1] > muro) and (laser_MM[2] < muro)) or ((laser_MM[3] < muro) and (laser_MM[4] > muro))):# laser davanti vuoto dietro muro 
+    
+    if (((laser.read(1) > muro) and (laser.read(2) < muro)) or ((laser.read(3) < muro) and (laser.read(4) > muro))):# laser davanti vuoto dietro muro 
         
-        ser.write(11)
+        ser.writeMot(1.0, 1.0, 1, 1)
+        Fc_avanti = fc.read()
         
-        while(((laser_MM[1] > muro) or (laser_MM[4] > muro))and((GPIO.input(12)))): #vadovanti finche non meschianto o trovo buco
+        while(((laser.read(1) > muro) or (laser.read(4) > muro))and(Fc_avanti[1])): #vadovanti finche non meschianto o trovo buco
             
-            laser.read()
+            Fc_avanti = fc.read()
             print("trovo buco")
+            
+        ser.writeMot()
         print("so fora")
-        ser.write(15)
-        data = 0
-        #time.sleep(0.25)
-        while(data < dietro):
-            print("torno indrio1")
-            ser.clean()
-            #time.sleep(0.25)
-#         if ser.read() != None:
-            data = ser.read()
-            print(data)
-        ser.write(10)
+        
+        print("torno indrio1")
+        mv.indietro()
 #         laser_MM = laser.read(2)
 #         if(laser_MM[1] < muro):
 #             ser.write(14)
@@ -75,73 +71,88 @@ while True:
 #         
 #         ser.write(10)
         
-    elif (((laser_MM[1] < muro) and (laser_MM[2] > muro)) or ((laser_MM[3] < muro) and (laser_MM[4] < muro))):
-        
-        ser.write(11)
-#         time.sleep(0.1)
-        while(((laser_MM[2] > muro) or (laser_MM[3] > muro))and(GPIO.input(12))):
-            
-            laser.read()
-            print("passo buco")
-        ser.write(11)
-        data = 0
-             
-        while((data < avanti)and(GPIO.input(12))):
-            laser.read()
-            print("passo buco")
-            
-        ser.write(10)
-    
-    if (GPIO.input(12)):
-        ser.write(15)
-        while(data < dietro):
-            print("torno indrio3")
-            ser.clean()
-            #time.sleep(0.25)
-#         if ser.read() != None:
-            data = ser.read()
-            print(data)
-        ser.write(10)
+#     elif (((laser_MM[1] < muro) and (laser_MM[2] > muro)) or ((laser_MM[3] < muro) and (laser_MM[4] < muro))):
+#         
+#         ser.write(11)
+# #         time.sleep(0.1)
+#         Fc_avanti = fc.read()
+#         while(((laser_MM[2] > muro) or (laser_MM[3] > muro))and(Fc_avanti[1])): 
+#             Fc_avanti = fc.read()
+#             laser.read()
+#             print("passo buco")
+#             ser.write(11)
+#             data = 0
+#              
+#             while((data < avanti)and(Fc_avanti[1])):#(not)
+#                 Fc_avanti = fc.read()
+#                 laser.read()
+#                 data = ser.read()
+#                 print("passo buco")
+#                 
+#         ser.write(10)
+#         time.sleep(0.7)
+
+    Fc_avanti = fc.read()
+    if not(Fc_avanti[1]):
+        print("torno indrio3")
+        mv.indietro()
         
     
-#     if ((laser_MM[1] < muro) and (laser_MM[2] < muro)):
-#         ang_DX = (math.atan((laser_MM[1] - laser_MM[2])/175))*180/math.pi
-#         
-#         while (ang_DX > 3.0):
-#             print("Raddrizzo")
-#             laser_MM = laser.read()
-#             ang_DX = (math.atan((laser_MM[1] - laser_MM[2])/175))*180/math.pi
-# #             gira
-#         
-#         while (ang_DX < -3.0):
-#             print("Raddrizzo")
-#             laser_MM = laser.read()
-#             ang_DX = (math.atan((laser_MM[1] - laser_MM[2])/175))*180/math.pi
-# #             gira
-#         
-#     elif ((laser_MM[3] < muro) and (laser_MM[4] < muro)):
-#         ang_SX = (math.atan((laser_MM[4] - laser_MM[3])/175))*180/math.pi
-#         
-#         while (ang_SX > 3.0):
-#             print("Raddrizzo")
-#             laser_MM = laser.read()
-#             ang_SX = (math.atan((laser_MM[4] - laser_MM[3])/175))*180/math.pi
-# #             gira
-#         
-#         while (ang_SX < -3.0):
-#             print("Raddrizzo")
-#             laser_MM = laser.read()
-#             ang_SX = (math.atan((laser_MM[4] - laser_MM[3])/175))*180/math.pi
-# #             gira
+    #RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO
+        
+    if ((laser.read(1) < muro) and (laser.read(2) < muro)): #RADDRIZZO DX
+        ang_DX = (math.atan((laser.read(1) - laser.read(2))/175))*180/math.pi
+        
+        if (ang_DX < -5.0) or (ang_DX > 5.0):
+            print("raddrizzo DX", ang_DX)
+            bno.begin()
+            bno_ANG = bno.readAngleRot()
+            if (ang_DX > 0):
+                ser.writeMot(0.7, 0.7, 1, 0)
+                ang_DX = ang_DX - 2
+                while (bno_ANG < ang_DX) or (bno_ANG > 350):
+                    bno_ANG = bno.readAngleRot()
+            
+            else:
+                ang_DX = ang_DX + 362
+                ser.writeMot(0.7, 0.7, 0, 1)
+                while (bno_ANG < 10) or (bno_ANG > ang_DX):
+                    bno_ANG = bno.readAngleRot()
+        
+        ser.writeMot()
     
-    if ((laser_MM[1] > muro) and (laser_MM[2] > muro)):
+    elif ((laser.read(3) < muro) and (laser.read(4) < muro)): #RADDRIZZO SX
+        ang_SX = (math.atan((laser.read(4) - laser.read(3))/175))*180/math.pi
+        
+        if (ang_SX < -5.0) or (ang_SX > 5.0):
+            print("raddrizzo SX", ang_SX)
+            bno.begin()
+            bno_ANG = bno.readAngleRot()
+            if (ang_SX > 0):
+                ang_DX = ang_DX - 2
+                ser.writeMot(0.7, 0.7, 0, 1)
+                while (bno_ANG < ang_SX) or (bno_ANG > 350):
+                    bno_ANG = bno.readAngleRot()
+            
+            else:
+                ang_SX = ang_SX + 362
+                ser.writeMot(0.7, 0.7, 1, 0)
+                while (bno_ANG < 10) or (bno_ANG > ang_SX):
+                    bno_ANG = bno.readAngleRot()
+        
+        ser.writeMot()
+    
+    #RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO   
+    
+    
+    #SCELGO DIREZIONE#SCELGO DIREZIONE#SCELGO DIREZIONE#SCELGO DIREZIONE#SCELGO DIREZIONE#SCELGO DIREZIONE#SCELGO DIREZIONE
+    if ((laser.read(1) > muro) and (laser.read(2) > muro)):
         direzione = 2
-        
         ang_attuale += 90
-    elif laser_MM[0] > muro:
+    elif laser.read(0) > muro:
         direzione = 1
         ang_attuale += 0
-    elif ((laser_MM[3] > muro) and (laser_MM[4] > muro)):
+    elif ((laser.read(3) > muro) or (laser.read(4) > muro)):
         direzione = 4
         ang_attuale += 270
     else:
@@ -152,112 +163,59 @@ while True:
         ang_attuale -= 360
     elif ang_attuale < 0:
         ang_attuale += 360
-        
-    ser.write(10)
     
+    #SCELGO DIREZIONE#SCELGO DIREZIONE#SCELGO DIREZIONE#SCELGO DIREZIONE#SCELGO DIREZIONE#SCELGO DIREZIONE#SCELGO DIREZIONE
+    
+    time.sleep(0.25)
     bno.begin()
     if direzione == 1:
         print("Vado dritto")
-        bno_ANG = bno.readAngle()
-        time.sleep(0.5)
     else:
-        bno_ANG = bno.readAngle()
+        bno_ANG = bno.readAngleRot()
         if direzione == 2:
             print("Ruoto di 90 gradi a destra")
-            ser.write(12)
-#             time.sleep(delay)
-#             ser.write(10)
+            ser.writeMot(0.7, 0.7, 1, 0)
             while (bno_ANG < 85) or (bno_ANG > 350):
-                try:
-                    bno_ANG = bno.readAngle()
-                except:
-                    print("eeror")
+                bno_ANG = bno.readAngleRot()
                 print(bno_ANG)
-#                 time.sleep(0.01)
-            ser.write(10)
+            ser.writeMot()
             
         elif direzione == 4:
             print("Ruoto di 90 gradi a sinistra")
-            ser.write(14)
-#             time.sleep(delay)
-#             ser.write(10)
+            ser.writeMot(0.7, 0.7, 0, 1)
             while (bno_ANG > 275) or (bno_ANG < 10):
-                try:
-                    bno_ANG = bno.readAngle()
-                except:
-                    print("eeror")
+                bno_ANG = bno.readAngleRot()
                 print(bno_ANG)
-#                 time.sleep(0.25)
-            ser.write(10)
+            ser.writeMot()
     
         elif direzione == 3:
             print("Ruoto di 180 gradi a destra")
-            ser.write(12)
-#             time.sleep(delay*2 - 0.3)
-#             ser.write(10)
-            while (bno_ANG < 170) or (bno_ANG > 190):
-              
-                bno_ANG = bno.readAngle()
+            ser.writeMot(0.7, 0.7, 1, 0)
+            while (bno_ANG < 173) or (bno_ANG > 190):
+                bno_ANG = bno.readAngleRot()
                 print(bno_ANG)
-                
-#                 ser.write(12)
-    ser.write(10)
-    time.sleep(0.5)
-    ser.write(11)
-#     time.sleep(0.1)
-    data = 0
-#     time.sleep(0.25)
-    while((data < impulsi)and(not(GPIO.input(12)))):
-        ser.clean()
-        print("vado avanti")
-        data = ser.read()
-        print(data)
-        r, g, b, c = apds.color_data
-        if (colorutility.calculate_lux(r, g, b))<25:
-            print("nero")
-            time.sleep(0.8)
-            print("Ruoto di 180 gradi a destra")
-            ser.write(12)
-#             time.sleep(delay*2 - 0.3)
-#             ser.write(10)
-            while (bno_ANG < 170) or (bno_ANG > 190):
-              
-                bno_ANG = bno.readAngle()
-                print(bno_ANG)
-            ser.write(11)
-            time.sleep(0.5)
-            break
-        
-#         if (not(GPIO.input(12))):
-#                 ser.clean()
-#                 time.sleep(0.25)
-#     #         if ser.read() != None:
-#                 data = ser.read()
-#                 print(data)
-#         else:
-#             print("torno indrio3")
-#             ser.write(15)
-#             data = 0
-#             time.sleep(0.05)
-#             while(data < dietro):
-#                 ser.clean()
-#                 time.sleep(0.25)
-#     #         if ser.read() != None:
-#                 data = ser.read()
-#                 print(data)
-#             break
-#         if ser.read() != None:
-        
-    ser.write(10)
-    if (not(GPIO.input(12))):
-        ser.write(15)
-        while(data < dietro):
-            print("torno indrio4")
-            ser.clean()
-            #time.sleep(0.25)
-#         if ser.read() != None:
-            data = ser.read()
-            print(data)
-        ser.write(10)
+            ser.writeMot()
+    time.sleep(0.25)
     
+    mv.avanti()
+    
+    if (apds.readC()<50):
+        print("Negro")
+        mv.indietro(7)
+        
+        bno.begin()
+        print("Ruoto di 180 gradi a destra")
+        ser.writeMot(0.7, 0.7, 1, 0)
+        bno_ANG = bno.readAngleRot()
+        while (bno_ANG < 173) or (bno_ANG > 190):
+            bno_ANG = bno.readAngleRot()
+            print(bno_ANG)
+        ser.writeMot()
+        
+    elif(apds.readB()<10):
+        print("Blu")
+    
+    if not(Fc_avanti[1]):
+        mv.indietro(5)   
+
     time.sleep(3)
