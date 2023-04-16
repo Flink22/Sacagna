@@ -60,7 +60,6 @@ class BNO055:
         self.writeBytes(BNO055.BNO055_SYS_TRIGGER_ADDR, [0x80])
         self.setMode(mode)
         time.sleep(0.02)
-        
         return True
     
     def readAngleRot(self):
