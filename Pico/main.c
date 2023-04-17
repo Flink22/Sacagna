@@ -277,7 +277,7 @@ void main_1() {
                     for (int k=0; k<2; k++){
                         temp = data % 100;
                         data = data / 100;
-                        uart_putc(uart0, temp);
+                        uart_putc_raw(uart0, temp);
                     }
                 }
             }else{
@@ -329,6 +329,11 @@ int main() {
     SERVO_PWM = serv_getduty(0);
     pwm_set_chan_level(slice_ser, PWM_CHAN_B, SERVO_PWM);
 
+    gpio_init(PICO_DEFAULT_LED_PIN);
+    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+
+    gpio_put(PICO_DEFAULT_LED_PIN, 0);
+
     for(int i=0;i<4;i++){
         queue_init(&speed_q[i], sizeof(double), 1);
         queue_init(&dir_q[i], sizeof(int8_t), 1);
@@ -368,7 +373,6 @@ int main() {
         queue_try_remove(&dir_q[PID.mot], &wanted_dir[PID.mot]);
         
         speedtemp = (((double)1000000.0) / (((double)RSP[PID.mot].curr) * 680.0));
-        printf("\n%f", speed[PID.mot]);
 
         if (speedtemp < 2.0) {
             speed[PID.mot] = speedtemp;
@@ -414,6 +418,12 @@ int main() {
 
             for(int i=0;i<4;i++){
                 if (DIS.trav[i] < DIS.temp)DIS.temp = DIS.trav[i];
+            }
+
+            if(DIS.temp>280){
+                gpio_put(PICO_DEFAULT_LED_PIN, 1);
+            } else{
+                gpio_put(PICO_DEFAULT_LED_PIN, 0);
             }
             queue_try_add(&dist_q, &DIS.temp);
 
