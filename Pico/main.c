@@ -253,6 +253,32 @@ bool pid(struct repeating_timer *t) {
     return true;
 }
 
+uint8_t nkit = 03;
+uint8_t dirkit = 1;
+bool kit(struct repeating_timer *t) {
+    queue_try_remove(&kit_q, &nkit);
+    queue_try_remove(&dirkit_q, &dirkit);
+
+    if(nkit > 0){
+        if(SERVO_PWM == serv_0){
+            if(dirkit == 1){
+                SERVO_PWM = serv_getduty(180);
+            }else{
+                SERVO_PWM = serv_getduty(-180);
+            }
+            nkit -= 1;
+        } else{
+            SERVO_PWM = serv_0;
+        }
+    }else{
+        SERVO_PWM = serv_0;
+    }
+
+    pwm_set_chan_level(slice_ser, PWM_CHAN_B, SERVO_PWM);
+
+    return true;
+}
+
 void main_1() {
 
     uint8_t buf, byte[8];
