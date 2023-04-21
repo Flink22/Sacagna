@@ -169,6 +169,8 @@ void var_setup() {
 
     TX = 0;
     RX = 1;
+	
+	serv_0 = 2050;
 }
 
 void mot_setup() {
