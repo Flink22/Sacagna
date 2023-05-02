@@ -46,7 +46,7 @@ typedef struct {
 typedef struct {
 	volatile uint32_t curr;
 	volatile uint32_t old;
-	volatile uint32_t temp;
+	 volatile uint32_t temp;
 	volatile uint impulsi;
 	volatile int dir;
     def_encoder ENC;
@@ -78,6 +78,9 @@ queue_t reset_q;
 queue_t dist_q;
 queue_t pid_q;
 
+queue_t kit_q;
+queue_t dirkit_q;
+
 volatile int EN_MOT;
 volatile int SERVO_PIN_PWM;
 volatile uint SERVO_PWM = 1250;
@@ -85,6 +88,8 @@ volatile uint slice_ser;
 
 volatile uint RX;
 volatile uint TX;
+
+volatile uint serv_0;
 
 void enc_interrupt(uint gpio, uint32_t events){
     int m;
@@ -194,13 +199,13 @@ void mot_setup() {
     }
 
     pwm_set_clkdiv(slice_ser, 100.0);
-    pwm_set_wrap(slice_ser, 24999);
-    pwm_set_chan_level(slice_ser, PWM_CHAN_B, SERVO_PWM);
+    pwm_set_wrap(slice_ser, 25000);
+    pwm_set_chan_level(slice_ser, PWM_CHAN_B, serv_0);
     pwm_set_enabled(slice_ser, true);
 
     for(int i=0;i<4;i++){
         pwm_set_clkdiv(DVR[i].slice, 100.0);
-        pwm_set_wrap(DVR[i].slice, 24999);
+        pwm_set_wrap(DVR[i].slice, 25000);
         pwm_set_chan_level(DVR[i].slice, DVR[i].PWM_CHAN, 10);
         pwm_set_enabled(DVR[i].slice, true);
     }
@@ -249,13 +254,7 @@ void driver_set(int mot, int8_t dir, int pwm) {
     pwm_set_chan_level(DVR[mot].slice, DVR[mot].PWM_CHAN, pwm);
 }
 
-uint8_t pidavv;
-bool pid(struct repeating_timer *t) {
-    queue_add_blocking(&pid_q, &pidavv);
-    return true;
-}
-
-uint8_t nkit = 03;
+uint8_t nkit = 0;
 uint8_t dirkit = 1;
 bool kit(struct repeating_timer *t) {
     queue_try_remove(&kit_q, &nkit);
@@ -278,6 +277,12 @@ bool kit(struct repeating_timer *t) {
 
     pwm_set_chan_level(slice_ser, PWM_CHAN_B, SERVO_PWM);
 
+    return true;
+}
+
+bool pid(struct repeating_timer *t) {
+    uint8_t pidavv;
+    queue_add_blocking(&pid_q, &pidavv);
     return true;
 }
 
@@ -306,6 +311,17 @@ void main_1() {
                         temp = data % 100;
                         data = data / 100;
                         uart_putc_raw(uart0, temp);
+                    }
+                }else{
+                    if(byte[4] != 0){
+                        uint8_t nkit;
+                        uint8_t dirkit;
+
+                        dirkit = byte[3];
+                        nkit = byte[2] * 2 + byte[1];
+
+                        queue_add_blocking(&dirkit_q, &dirkit);
+                        queue_add_blocking(&kit_q, &nkit);
                     }
                 }
             }else{
@@ -354,9 +370,6 @@ int main() {
     mot_setup();
     uart_setup();
 
-    SERVO_PWM = serv_getduty(0);
-    pwm_set_chan_level(slice_ser, PWM_CHAN_B, SERVO_PWM);
-
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
@@ -368,11 +381,17 @@ int main() {
     }
     queue_init(&reset_q, sizeof(int8_t), 1);
     queue_init(&dist_q, sizeof(double), 1);
+
+    queue_init(&dirkit_q, sizeof(int8_t), 1);
+    queue_init(&kit_q, sizeof(int8_t), 1);
     
     struct repeating_timer timerpid;
     add_repeating_timer_us(-500, pid, NULL, &timerpid);
     queue_init(&pid_q, sizeof(uint8_t), 1);
     
+    struct repeating_timer timerkit;
+    add_repeating_timer_ms(500, kit, NULL, &timerkit);    
+
     double speedtemp;
     double speed[n_mot] = {0};
     double speed_error = 0;
@@ -408,7 +427,7 @@ int main() {
             speed[PID.mot] = 0.0;
             RSP[PID.mot].curr = 4000000000;
         } else{
-            speed[PID.mot] += speed[PID.mot] * -0.01;
+            speed[PID.mot] += speed[PID.mot] * -0.05;
         }
 
         PID.P = 0;
@@ -448,7 +467,7 @@ int main() {
                 if (DIS.trav[i] < DIS.temp)DIS.temp = DIS.trav[i];
             }
 
-            if(DIS.temp>280){
+            if(DIS.temp>290){
                 gpio_put(PICO_DEFAULT_LED_PIN, 1);
             } else{
                 gpio_put(PICO_DEFAULT_LED_PIN, 0);
