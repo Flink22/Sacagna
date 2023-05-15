@@ -3,15 +3,13 @@ import numpy as np
 
 class letters:
     def __init__(self):
-        self.low_b = np.array([0, 0, 0])
-        self.high_b = np.array([20, 20, 20])
-        self.def_N = 0
+        self.def_N = -1
     
     def find(self, blur, frame):
         
         gray = cv.cvtColor(blur, cv.COLOR_BGR2GRAY)
         thresh = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 29, 11)
-        mask = cv.inRange(thresh, 0, 20)
+        mask = cv.inRange(thresh, 0, 1)
         contours, hierarchy = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         self.def_N = -1
         if len(contours) != 0:  
