@@ -8,21 +8,45 @@ import queue as Queue
 
 from os.path import join
 
+class casella:
+    def __init__(self):
+        self.padre=0
+        self.distanza=10000 
+
 def main(camdx_q, camsx_q, vittima):
     
-    delay = 1.2
-    avanti = 190
-    dietro = 100
-    impulsi = 2740
+    GPIO.setmode(GPIO.BCM)
+    button_pin = 17
+    GPIO.setup(button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    global running
+    running = True
+
+    def button_callback(channel):
+        global running
+        if running==True:
+            print("Programma interrotto.")
+            running = False
+        else:
+            print("Programma ripreso.")
+            running = True
+    GPIO.add_event_detect(button_pin, GPIO.FALLING, callback=button_callback, bouncetime=200)
+        
+    
     muro = 150
 
     mappa = 80
+#     mappa=12
 
+#     xStart = xNow = xend = 6
+#     yStart = yNow = yend = 6
+    
     xStart = xNow = xend = 40
     yStart = yNow = yend = 40
     
     ang_attuale = 0
     dire = 1
+    calli=0
+    ritorno = 0
                
 
 
@@ -92,323 +116,462 @@ def main(camdx_q, camsx_q, vittima):
                                                                                                                             
     while True:
         
-        if ang_attuale>360:
-            ang_attuale -= 360
+        if running:
         
-        x=int(math.cos(math.radians(ang_attuale)))
-        y=int(math.sin(math.radians(ang_attuale)))
-        
-         #RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO
+            if ang_attuale>360:
+                ang_attuale -= 360
             
-        if ((laser.read(1) < muro) and (laser.read(2) < muro)): #RADDRIZZO DX
-            ang_DX = (math.atan((laser.read(1) - laser.read(2))/175))*180/math.pi
+            x=int(math.cos(math.radians(ang_attuale)))
+            y=int(math.sin(math.radians(ang_attuale)))
             
-            if (ang_DX < -4.0) or (ang_DX > 4.0):
-                print('raddrizzo DX', ang_DX)
-                bno.begin()
-                bno_ANG = bno.readAngleRot()
-                if (ang_DX > 0):
-                    ser.writeMot(0.3, 0.3, 1, 0)
-                    ang_DX = ang_DX - 3
-                    while (bno_ANG < ang_DX) or (bno_ANG > 350):
-                        bno_ANG = bno.readAngleRot()
+             #RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO
                 
-                else:
-                    ang_DX = ang_DX + 363
-                    ser.writeMot(0.3, 0.3, 0, 1)
-                    while (bno_ANG < 10) or (bno_ANG > ang_DX):
-                        bno_ANG = bno.readAngleRot()
-            
-            ser.writeMot()
-        
-        elif ((laser.read(3) < muro) and (laser.read(4) < muro)): #RADDRIZZO SX
-            ang_SX = (math.atan((laser.read(4) - laser.read(3))/175))*180/math.pi
-            
-            if (ang_SX < -4.0) or (ang_SX > 4.0):
-                print('raddrizzo SX', ang_SX)
-                bno.begin()
-                bno_ANG = bno.readAngleRot()
-                if (ang_SX > 0):
-                    ang_SX = ang_SX - 3
-                    ser.writeMot(0.3, 0.3, 0, 1)
-                    while (bno_ANG < ang_SX) or (bno_ANG > 350):
-                        bno_ANG = bno.readAngleRot()
+            if ((laser.read(1) < muro) and (laser.read(2) < muro)): #RADDRIZZO DX
+                ang_DX = (math.atan((laser.read(1) - laser.read(2))/175))*180/math.pi
                 
-                else:
-                    ang_SX = ang_SX + 363-3
-                    ser.writeMot(0.3, 0.3, 1, 0)
-                    while (bno_ANG < 10) or (bno_ANG > ang_SX):
-                        bno_ANG = bno.readAngleRot()
-            
-            ser.writeMot()
-        
-        #FINE FINE RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO   
-        
-        GPIO.output(26,GPIO.LOW)
-        time.sleep(0.1)
-        GPIO.output(26,GPIO.HIGH)
-        
-        
-      
-        if ((laser.read(1) < muro) and (laser.read(2) < muro)):
-            if board[yStart][xStart] != '2':
-                print()
-                try:
-                    camdx_q.put_nowait(True)
-                except Queue.Full:
-                    None
-                time.sleep(0.5)
-                try:
-                    vit = vittima.get_nowait()
-                except Queue.Empty:
-                    vit = -1
-                    pass
-                if vit>=0:
-                    led.blink(5)
-            board[yNow + y][xNow + x] = '!'
-            
-        if laser.read(0) < muro:
-            board[yNow - x][xNow + y] = '?'
-            if board[yStart][xStart] != '2':
-                bno.begin()
-                bno_ANG = bno.readAngleRot()
-                print('Ruoto di 90 gradi a destra')
-                ser.writeMot(1.0, 1.0, 1, 0)
-                while (bno_ANG < 85) or (bno_ANG > 350):
+                if (ang_DX < -8.0) or (ang_DX > 8.0):
+                    print('raddrizzo DX', ang_DX)
+                    bno.begin()
                     bno_ANG = bno.readAngleRot()
-                    #print(bno_ANG)
-                ser.writeMot()
-                try:
-                    camsx_q.put_nowait(True)
-                except Queue.Full:
-                    None
-                time.sleep(0.5)
-                try:
-                    vit = vittima.get_nowait()
-                except Queue.Empty:
-                    vit = -1
-                    pass
-                if vit>=0:
-                    led.blink(5)
+                    if (ang_DX > 0):
+                        ser.writeMot(0.3, 0.3, 1, 0)
+                        ang_DX = ang_DX - 3
+                        while (bno_ANG < ang_DX) or (bno_ANG > 350):
+                            bno_ANG = bno.readAngleRot()
+                    
+                    else:
+                        ang_DX = ang_DX + 363
+                        ser.writeMot(0.3, 0.3, 0, 1)
+                        while (bno_ANG < 10) or (bno_ANG > ang_DX):
+                            bno_ANG = bno.readAngleRot()
                 
-                bno.begin()
-                bno_ANG = bno.readAngleRot()
-                print('Ruoto di 90 gradi a sinistra')
-                ser.writeMot(1.0, 1.0, 0, 1)
-                while (bno_ANG > 275) or (bno_ANG < 10):
-                    bno_ANG = bno.readAngleRot()
-                    #print(bno_ANG)
                 ser.writeMot()
+            
+            elif ((laser.read(3) < muro) and (laser.read(4) < muro)): #RADDRIZZO SX
+                ang_SX = (math.atan((laser.read(4) - laser.read(3))/175))*180/math.pi
+                
+                if (ang_SX < -8.0) or (ang_SX > 8.0):
+                    print('raddrizzo SX', ang_SX)
+                    bno.begin()
+                    bno_ANG = bno.readAngleRot()
+                    if (ang_SX > 0):
+                        ang_SX = ang_SX - 3
+                        ser.writeMot(0.3, 0.3, 0, 1)
+                        while (bno_ANG < ang_SX) or (bno_ANG > 350):
+                            bno_ANG = bno.readAngleRot()
+                    
+                    else:
+                        ang_SX = ang_SX + 363
+                        ser.writeMot(0.3, 0.3, 1, 0)
+                        while (bno_ANG < 10) or (bno_ANG > ang_SX):
+                            bno_ANG = bno.readAngleRot()
+                
+                ser.writeMot()
+            
+            #FINE FINE RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO   
+            
+            check_avanti = 0
+            
+            if ((laser.read(1) < muro) and (laser.read(2) < muro)):
+                if board[yStart][xStart] != '2':
+                    print()
+                    try:
+                        camdx_q.put_nowait(True)
+                    except Queue.Full:
+                        None
+                board[yNow + y][xNow + x] = '!'
 
-        if ((laser.read(3) < muro) and (laser.read(4) < muro)):
-            if board[yStart][xStart] != '2':
-                print()
-                try:
-                    camsx_q.put_nowait(True)
-                except Queue.Full:
-                    None
-                time.sleep(0.5)
-                try:
-                    vit = vittima.get_nowait()
-                except Queue.Empty:
-                    vit = -1
-                    pass
-                if vit>=0:
-                    led.blink(5)
-            board[yNow - y][xNow - x] = '!'
-
-
-     
+            if ((laser.read(3) < muro) and (laser.read(4) < muro)):
+                if board[yStart][xStart] != '2':
+                    print()
+                    try:
+                        camsx_q.put_nowait(True)
+                    except Queue.Full:
+                        None
+                board[yNow - y][xNow - x] = '!'
+            
+            if laser.read(0) < muro:
+                board[yNow - x][xNow + y] = '?'
+                if board[yStart][xStart] != '2':
+                    check_avanti = 1
+            
+            time.sleep(0.1)
+            try:
+                vit = vittima.get_nowait()
+            except Queue.Empty:
+                vit = -1
+                pass
+            if vit>=0:
+                led.blink(5)
+            
+            board[yStart][xStart] = '1'
+            
+    #         
+    #         for i in range(mappa):
+    #             for j in range(mappa):
+    #                 print(' ',board[i][j], end = '')
+    #             
+    #             print()
+    #             print() 
+    #         
+            
+            #SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione
+            
+            
+            #     scelgo via
         
-        board[yStart][xStart] = '1'
-        
-#         
-#         for i in range(mappa):
-#             for j in range(mappa):
-#                 print(' ',board[i][j], end = '')
-#             
-#             print()
-#             print() 
-#         
-        
-        #SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione
-        
-        GPIO.output(26,GPIO.LOW)
-        time.sleep(0.1)
-        GPIO.output(26,GPIO.HIGH)
-        
-        #     scelgo via
-    
-        if (board[yNow + y][xNow + x] != '!') and (board[yNow + y][xNow + x] != '?') and (board[yNow + (y*2)][xNow + (x*2)] != '4'):
-            if (board [yNow + (y*2)][xNow + (x*2)] == '2') and (board[yNow - x][xNow + y] != '!') and (board[yNow - x][xNow + y] != '?') and (board[yNow - (x*2)][xNow + (y*2)] != '4') and (board[yNow - (x*2)][xNow + (y*2)] != '2'):
-                yNow -= (x*2)
-                xNow += (y*2)
-                direzione = 1
-                ang_attuale += 0
-            elif (board [yNow + (y*2)][xNow + (x*2)] == '2') and (board[yNow - y][xNow - x] != '!') and (board[yNow - y][xNow - x] != '?') and (board[yNow - (y*2)][xNow - (x*2)] != '4') and (board[yNow - (y*2)][xNow - (x*2)] != '2'):
+            if (board[yNow + y][xNow + x] != '!') and (board[yNow + y][xNow + x] != '?') and (board[yNow + (y*2)][xNow + (x*2)] != '4'):
+                if (board [yNow + (y*2)][xNow + (x*2)] == '2') and (board[yNow - x][xNow + y] != '!') and (board[yNow - x][xNow + y] != '?') and (board[yNow - (x*2)][xNow + (y*2)] != '4') and (board[yNow - (x*2)][xNow + (y*2)] != '2'):
+                    yNow -= (x*2)
+                    xNow += (y*2)
+                    direzione = 1
+                    ang_attuale += 0
+                elif (board [yNow + (y*2)][xNow + (x*2)] == '2') and (board[yNow - y][xNow - x] != '!') and (board[yNow - y][xNow - x] != '?') and (board[yNow - (y*2)][xNow - (x*2)] != '4') and (board[yNow - (y*2)][xNow - (x*2)] != '2'):
+                    xNow -= (x*2)
+                    yNow += (y*2)   
+                    direzione = 4
+                    ang_attuale += 270 
+                elif(board[yNow + (y*2)][xNow + (x*2)] != '2'):
+                    xNow += (x*2)
+                    yNow += (y*2)    
+                    direzione = 2
+                    ang_attuale += 90
+                    print(ang_attuale)
+                else:
+                    calli=1
+            
+            elif (board[yNow - x][xNow + y] != '!') and (board[yNow - x][xNow + y] != '?') and (board[yNow - (x*2)][xNow + (y*2)] != '4'):
+                if (board[yNow - (x*2)][xNow + (y*2)] == '2') and (board[yNow - y][xNow - x] != '!') and (board[yNow - y][xNow - x] != '?') and (board[yNow - (y*2)][xNow - (x*2)] != '4') and (board[yNow - (y*2)][xNow - (x*2)] != '2'):
+                    xNow -= (x*2)
+                    yNow -= (y*2)            
+                    direzione = 4
+                    ang_attuale += 270
+                elif(board[yNow - (x*2)][xNow + (y*2)] != '2'):
+                    yNow -= (x*2)
+                    xNow += (y*2)
+                    direzione = 1
+                    ang_attuale += 0
+                else:
+                    calli=1
+            
+            elif (board[yNow - y][xNow - x] != '!') and (board[yNow - y][xNow - x] != '?') and (board[yNow - (y*2)][xNow - (x*2)] != '4'):
                 xNow -= (x*2)
-                yNow += (y*2)   
-                direzione = 4
-                ang_attuale += 270 
-            else:
-                xNow += (x*2)
-                yNow += (y*2)    
-                direzione = 2
-                ang_attuale += 90
-                print(ang_attuale)
-        
-        elif (board[yNow - x][xNow + y] != '!') and (board[yNow - x][xNow + y] != '?') and (board[yNow - (x*2)][xNow + (y*2)] != '4'):
-            if (board[yNow - (x*2)][xNow + (y*2)] == '2') and (board[yNow - y][xNow - x] != '!') and (board[yNow - y][xNow - x] != '?') and (board[yNow - (y*2)][xNow - (x*2)] != '4') and (board[yNow - (y*2)][xNow - (x*2)] != '2'):
-                xNow -= (x*2)
-                yNow -= (y*2)            
+                yNow -= (y*2)
                 direzione = 4
                 ang_attuale += 270
+            
             else:
-                yNow -= (x*2)
-                xNow += (y*2)
-                direzione = 1
-                ang_attuale += 0
+                if (board[yNow + (x*2)][xNow - (y*2)] == '2'):
+                    calli=1
+                else:
+                    
+                    yNow += (x*2)
+                    xNow -= (y*2)
+                    direzione = 3
+                    ang_attuale += 180
         
-        elif (board[yNow - y][xNow - x] != '!') and (board[yNow - y][xNow - x] != '?') and (board[yNow - (y*2)][xNow - (x*2)] != '4'):
-            xNow -= (x*2)
-            yNow -= (y*2)
-            direzione = 4
-            ang_attuale += 270
-        
-        else:
-            yNow += (x*2)
-            xNow -= (y*2)
-            direzione = 3
-            ang_attuale += 180
-    
-        
-        
-        try:
-            vit = vittima.get_nowait()
-        except Queue.Empty:
-            vit = -1
-            pass
-        
-        if vit>=0:
-            led.blink(5)
-        
-        #SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione
-        
-        #(0.25)
-        bno.begin()
-        if direzione == 1:
-            print('Vado dritto')
-        else:
-            bno_ANG = bno.readAngleRot()
-            if direzione == 2:
-                print('Ruoto di 90 gradi a destra')
-                ser.writeMot(1.0, 1.0, 1, 0)
-                while (bno_ANG < 85) or (bno_ANG > 350):
-                    bno_ANG = bno.readAngleRot()
-                    #print(bno_ANG)
-                ser.writeMot()
-                if ((board[yStart - y][xStart - x] == '!') or (board[yStart - y][xStart - x] == '?')):
-                    ser.writeMot(1.0, 1.0, 0, 0)
-                    time.sleep(0.5)
-                    ser.writeMot()
-                    ser.writeMot(0.5, 0.5, 1, 1)
-                    time.sleep(0.25)
-                    ser.writeMot()
+            if calli==1:
+                print("faccio calli")
+                yn=yNow//2
+                xn=xNow//2
+                dis=0
                 
-            elif direzione == 4:
-                print('Ruoto di 90 gradi a sinistra')
-                ser.writeMot(1.0, 1.0, 0, 1)
-                while (bno_ANG > 275) or (bno_ANG < 10):
-                    bno_ANG = bno.readAngleRot()
-                    #print(bno_ANG)
-                ser.writeMot()
-                if ((board[yStart + y][xStart + x] == '!') or (board[yStart + y][xStart + x] == '?')):
-                    ser.writeMot(1.0, 1.0, 0, 0)
-                    time.sleep(0.5)
-                    ser.writeMot()
-                    ser.writeMot(0.5, 0.5, 1, 1)
-                    time.sleep(0.25)
-                    ser.writeMot()
+                arrivo=[]
+                mpcalli = [[casella() for i in range(mappa//2)] for i in range(mappa//2)]
+                frontiera= [xn,yn,dis]
+                mpcalli[yn][xn].distanza = 0
+                while len(arrivo) == 0:
+                    if len (frontiera) ==0 and ritorno == 0:
+                        print ('ritorno')
+                        ritorno = 1
+                        board[yend][xend]= '0'
+                        yn=yNow//2
+                        xn=xNow//2
+                        dis=0
+                        arrivo=[]
+                        mpcalli = [[casella() for i in range(mappa//2)] for i in range(mappa//2)]
+                        frontiera= [xn,yn,dis]
+                        mpcalli[yn][xn].distanza = 0
                
-            elif direzione == 3:
-                print('Ruoto di 180 gradi a destra')
-                ser.writeMot(0.7, 0.7, 1, 0)
-                while (bno_ANG < 173) or (bno_ANG > 190):
-                    bno_ANG = bno.readAngleRot()
-                    #print(bno_ANG)
-                ser.writeMot()
-                ser.writeMot(1.0, 1.0, 0, 0)
-                time.sleep(0.5)
-                ser.writeMot()
-                ser.writeMot(0.5, 0.5, 1, 1)
-                time.sleep(0.25)
-                ser.writeMot()
-        time.sleep(0.25)
-        
-        GPIO.output(26,GPIO.LOW)
-        time.sleep(0.1)
-        GPIO.output(26,GPIO.HIGH)
-        
-        board[yStart][xStart] = '2'
-        
-        mv.avanti()
-        
-        if (apds.readC()<750):
-            mv.indietro(5)
-            print('Negro')
-            
-            board[yNow][xNow] = '4'
-            yNow = yStart
-            xNow = xStart
-            if ang_attuale == 0:
-                ang_attuale = 180
-            elif ang_attuale == 90:
-                ang_attuale = 270
-            elif ang_attuale == 180:
-                ang_attuale = 0
-            else:
-                ang_attuale = 90
-            
-            
-            bno.begin()
-            print('Ruoto di 180 gradi a destra')
-            ser.writeMot(0.7, 0.7, 1, 0)
-            bno_ANG = bno.readAngleRot()
-            while (bno_ANG < 173) or (bno_ANG > 190):
-                bno_ANG = bno.readAngleRot()
-               # print(bno_ANG)
-            ser.writeMot()
-            
-        elif(apds.readB()<800):
-            print('Blu')
-            time.sleep(5)
+                    xn=frontiera[0]
+                    yn=frontiera[1]
+                    dis=frontiera[2]
+                    dis +=1
+                    if (board[(yn*2)][(xn*2) + 1]!= '!') and (board[yn*2][(xn*2) + 1]!= '?') and (board[yn*2][(xn*2) + 2]!= '4'):
+                        
+                        if board[yn*2][(xn*2)+2]=='2' and mpcalli[yn][xn].distanza<mpcalli[yn][xn+1].distanza:
+                            mpcalli[yn][xn+1].distanza = dis
+                            mpcalli[yn][xn+1].padre = 2
+                            frontiera.append(xn+1)
+                            frontiera.append(yn)
+                            frontiera.append(dis)
+
+                        elif board[yn*2][(xn*2) + 2]== '0':
+                            arrivo.append(xn+1)
+                            arrivo.append(yn)
+                            arrivo.append(dis)
+                            mpcalli[yn][xn+1].distanza = dis
+                            mpcalli[yn][xn+1].padre = 2
+
+
+                    
+                    if (board[(yn*2)-1][(xn*2)]!= '!') and (board[(yn*2)-1][(xn*2)]!= '?') and (board[(yn*2)-2][(xn*2)]!= '4'):
+                        if board[(yn*2)-2][(xn*2)]=='2' and mpcalli[yn][xn].distanza<mpcalli[yn-1][xn].distanza:
+                            mpcalli[yn-1][xn].distanza = dis
+                            mpcalli[yn-1][xn].padre = 1
+                            frontiera.append(xn)
+                            frontiera.append(yn-1)
+                            frontiera.append(dis)
+
+                        elif board[(yn*2)-2][(xn*2)]== '0':
+                            arrivo.append(xn)
+                            arrivo.append(yn-1)
+                            arrivo.append(dis)
+                            mpcalli[yn-1][xn].distanza = dis
+                            mpcalli[yn-1][xn].padre = 1
+                    
+                    if (board[(yn*2)][(xn*2) - 1]!= '!') and (board[yn*2][(xn*2) - 1]!= '?') and (board[yn*2][(xn*2) - 2]!= '4'):
+                        if board[yn*2][(xn*2)-2]=='2' and mpcalli[yn][xn].distanza<mpcalli[yn][xn-1].distanza:
+                            mpcalli[yn][xn-1].distanza = dis
+                            mpcalli[yn][xn-1].padre = 4
+                            frontiera.append(xn-1)
+                            frontiera.append(yn)
+                            frontiera.append(dis)
+
+                        elif board[yn*2][(xn*2) - 2]== '0':
+                            arrivo.append(xn-1)
+                            arrivo.append(yn)
+                            arrivo.append(dis)
+                            mpcalli[yn][xn-1].distanza = dis
+                            mpcalli[yn][xn-1].padre = 4
+                    
+                    if (board[(yn*2)+1][(xn*2)]!= '!') and (board[(yn*2)+1][(xn*2)]!= '?') and (board[(yn*2)+2][(xn*2)]!= '4'):
+                        if board[(yn*2)+2][(xn*2)]=='2' and mpcalli[yn][xn].distanza<mpcalli[yn+1][xn].distanza:
+                            mpcalli[yn+1][xn].distanza = dis
+                            mpcalli[yn+1][xn].padre = 3
+                            frontiera.append(xn)
+                            frontiera.append(yn+1)
+                            frontiera.append(dis)
+
+                        elif board[(yn*2)+2][(xn*2)]== '0':
+                            arrivo.append(xn)
+                            arrivo.append(yn+1)
+                            arrivo.append(dis)
+                            mpcalli[yn+1][xn].distanza = dis
+                            mpcalli[yn+1][xn].padre = 3
+                    
+                    
+    #                 for i in range(mappa // 2):
+    #                     for j in range(mappa // 2):
+    #                         print(' ',mpcalli[i][j].padre, end = '')
+    #                     
+    #                     print()
+    #                     print()
+                        
+                        
+                        
+                        
+                    for i in range (3):
+                        frontiera.pop(0)
                 
+                frontiera.clear()
+                xn=arrivo[0]
+                yn=arrivo[1]
+                dis=arrivo[2]
+                while dis!=1:
+                    dis -=1
+                    if mpcalli[yn][xn].padre==4:
+                        xn+=1
+                    elif mpcalli[yn][xn].padre==2:
+                        xn-=1
+                    elif mpcalli[yn][xn].padre==3:
+                        yn-=1
+                    elif mpcalli[yn][xn].padre==1:
+                        yn+=1
+                
+    #             print (((ang_attuale) % 360))
+    #             print ((mpcalli[yn][xn].padre-1)*90)
+                if ((ang_attuale % 360))==(mpcalli[yn][xn].padre-1)*90:
+                    yNow -= (x*2)
+                    xNow += (y*2)
+                    direzione = 1
+                    ang_attuale += 0
+                    
+                elif ((ang_attuale+90) % 360)==(mpcalli[yn][xn].padre-1)*90:
+                    xNow += (x*2)
+                    yNow += (y*2)    
+                    direzione = 2
+                    ang_attuale += 90
+                    
+                elif ((ang_attuale+180) % 360)==(mpcalli[yn][xn].padre-1)*90:
+                    yNow += (x*2)
+                    xNow -= (y*2)
+                    direzione = 3
+                    ang_attuale += 180
+                    
+                else:
+                    xNow -= (x*2)
+                    yNow -= (y*2)
+                    direzione = 4
+                    ang_attuale += 270
+                arrivo.clear()
+            
+            #FINE FINE SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione
+            
+            GPIO.output(26,GPIO.LOW)
+            time.sleep(0.1)
+            GPIO.output(26,GPIO.HIGH)
+            x=int(math.cos(math.radians(ang_attuale)))
+            y=int(math.sin(math.radians(ang_attuale)))
+            
+            vit = -1
+            bno.begin()
+            if direzione == 1:
+                print('Vado dritto')
+            else:
+                bno_ANG = bno.readAngleRot()
+                if direzione == 2:
+                    print('Ruoto di 90 gradi a destra')
+                    ser.writeMot(1.0, 1.0, 1, 0)
+                    while (bno_ANG < 85) or (bno_ANG > 350):
+#                         ser.writeMot(1.0, 1.0, 1, 0)
+                        bno_ANG = bno.readAngleRot()
+                        #print(bno_ANG)
+                    ser.writeMot()
+                    if ((board[yStart - y][xStart - x] == '!') or (board[yStart - y][xStart - x] == '?')):
+                        mv.indietro()
+                        mv.avanti(cm = 4)
+                    if check_avanti == 1:
+                        try:
+                            camsx_q.put_nowait(True)
+                        except Queue.Full:
+                            None
+                    
+                elif direzione == 4:
+                    print('Ruoto di 90 gradi a sinistra')
+                    ser.writeMot(1.0, 1.0, 0, 1)
+                    while (bno_ANG > 275) or (bno_ANG < 10):
+#                         ser.writeMot(1.0, 1.0, 0, 1)
+                        bno_ANG = bno.readAngleRot()
+                        #print(bno_ANG)
+                    ser.writeMot()
+                    if ((board[yStart + y][xStart + x] == '!') or (board[yStart + y][xStart + x] == '?')):
+                        mv.indietro()
+                        mv.avanti(cm = 4)
+                    if check_avanti == 1:
+                        try:
+                            camdx_q.put_nowait(True)
+                        except Queue.Full:
+                            None
+                   
+                elif direzione == 3:
+                    print('Ruoto di 180 gradi a destra')
+                    
+                    if check_avanti == 1:
+                        ser.writeMot(1.0, 1.0, 1, 0)
+                        while (bno_ANG < 85) or (bno_ANG > 350):
+#                             ser.writeMot(1.0, 1.0, 1, 0)
+                            bno_ANG = bno.readAngleRot()
+                            #print(bno_ANG)
+                        ser.writeMot()
+                        try:
+                            camsx_q.put_nowait(True)
+                        except Queue.Full:
+                            None
+                        bno.begin()
+                        time.sleep(0.1)
+                        bno_ANG = bno.readAngleRot()
+                        ser.writeMot(1.0, 1.0, 1, 0)
+                        while (bno_ANG < 85) or (bno_ANG > 350):
+#                             ser.writeMot(1.0, 1.0, 1, 0)
+                            bno_ANG = bno.readAngleRot()
+                            #print(bno_ANG)
+                        ser.writeMot()
+                        
+                    else:
+                        ser.writeMot(0.7, 0.7, 1, 0)
+                        while (bno_ANG < 173) or (bno_ANG > 190):
+                            bno_ANG = bno.readAngleRot()
+                            #print(bno_ANG)
+                        ser.writeMot()
+                        
+                    if (board[yNow - y][xNow + x] == '!') or (board[yNow - y][xNow + x] == '?') :
+                        mv.indietro()
+                        mv.avanti(cm = 4)
+             
             GPIO.output(26,GPIO.LOW)
             time.sleep(0.1)
             GPIO.output(26,GPIO.HIGH)
             
-        
-    #     if(apds.read grigio):
-    #         print("CHECK")
-    #         check = board.copy()
+            board[yStart][xStart] = '2'
+            calli=0
             
-        Fc_avanti = fc.read()
-        if not(Fc_avanti[1]):
-            mv.indietro(2)
-        
-        if yStart != yNow or xStart != xNow :
+            try:
+                vit = vittima.get_nowait()
+            except Queue.Empty:
+                vit = -1
+                pass
+            if vit>=0:
+                led.blink(5)
+            check_avanti = 0
             
             
-            yStart = yNow
-            xStart = xNow
-    #         board[yNow][xNow] = '1'
-        
-        print()
-        print(ang_attuale)
-        
-        GPIO.output(26,GPIO.LOW)
-        time.sleep(0.1)
-        GPIO.output(26,GPIO.HIGH)
+            dis = mv.avanti()
+            print (dis)
+            print ('distanza gg')
+            
+            if (apds.readC()<500):
+                print('Negro')
+                mv.indietro()
+                
+                board[yNow][xNow] = '4'
+                yNow = yStart
+                xNow = xStart
+                
+                ang_attuale += 180
+                
+                bno.begin()
+                print('Ruoto di 180 gradi')
+                bno_ANG = bno.readAngleRot()
+                ser.writeMot(0.7, 0.7, 1, 0)
+                while (bno_ANG < 173) or (bno_ANG > 190):
+#                     ser.writeMot(0.7, 0.7, 1, 0)
+                    bno_ANG = bno.readAngleRot()
+                   # print(bno_ANG)
+                ser.writeMot()
+                
+            elif(apds.readB()<800):
+                print('Blu')
+                time.sleep(4.5)
+                    
+                GPIO.output(26,GPIO.LOW)
+                time.sleep(0.1)
+                GPIO.output(26,GPIO.HIGH)
+                
+            
+        #     if(apds.read grigio):
+        #         print("CHECK")
+        #         check = board.copy()
+                
+            Fc_avanti = fc.read()
+            if not(Fc_avanti[1]):
+                mv.indietro(3)
+            
+            if yStart != yNow or xStart != xNow :
+                yStart = yNow
+                xStart = xNow
+        #         board[yNow][xNow] = '1'
+            
+            print()
+            print(ang_attuale)
+            
+            GPIO.output(26,GPIO.LOW)
+            time.sleep(0.1)
+            GPIO.output(26,GPIO.HIGH)
+        else:
+            # Il programma è in pausa
+            print("Programma in pausa...")
+            time.sleep(0.1)
         
             
 
