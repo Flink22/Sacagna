@@ -20,14 +20,14 @@
 
 #define n_mot 4
 
-#define kp 7000.0
-#define ki 200.0
-#define kd 400.0
+#define kp 14000.0
+#define ki 400.0
+#define kd 800.0
 #define diametro 69.0
 
-#define Plim 25000.0
-#define Ilim 2000.0 //100.0
-#define Dlim 5000.0 //5000.0
+#define Plim 50000.0
+#define Ilim 4000.0
+#define Dlim 10000.0
 
 typedef struct {
     volatile uint IN1;
@@ -78,18 +78,17 @@ queue_t reset_q;
 queue_t dist_q;
 queue_t pid_q;
 
-queue_t kit_q;
-queue_t dirkit_q;
+queue_t kitd_q;
+queue_t kits_q;
 
 volatile int EN_MOT;
 volatile int SERVO_PIN_PWM;
-volatile uint SERVO_PWM = 1250;
+volatile uint SERVO_PWM;
 volatile uint slice_ser;
+volatile uint serv_0;
 
 volatile uint RX;
 volatile uint TX;
-
-volatile uint serv_0;
 
 void enc_interrupt(uint gpio, uint32_t events){
     int m;
@@ -175,7 +174,8 @@ void var_setup() {
     TX = 0;
     RX = 1;
 	
-	serv_0 = 2050;
+	serv_0 = 1875;
+
 }
 
 void mot_setup() {
@@ -204,9 +204,9 @@ void mot_setup() {
     pwm_set_enabled(slice_ser, true);
 
     for(int i=0;i<4;i++){
-        pwm_set_clkdiv(DVR[i].slice, 100.0);
-        pwm_set_wrap(DVR[i].slice, 25000);
-        pwm_set_chan_level(DVR[i].slice, DVR[i].PWM_CHAN, 10);
+        pwm_set_clkdiv(DVR[i].slice, 50.0);
+        pwm_set_wrap(DVR[i].slice, 50000);
+        pwm_set_chan_level(DVR[i].slice, DVR[i].PWM_CHAN, 1);
         pwm_set_enabled(DVR[i].slice, true);
     }
 
@@ -243,32 +243,42 @@ void driver_set(int mot, int8_t dir, int pwm) {
     }else if (dir == -1){
         gpio_put(DVR[mot].IN1, 0);
         gpio_put(DVR[mot].IN2, 1);
-    }else if (dir == 0){ //BRAKE
+    }else if (dir == 0){ //FRENA
         pwm_set_chan_level(DVR[mot].slice, DVR[mot].PWM_CHAN, 0);
         gpio_put(DVR[mot].IN1, 1);
         gpio_put(DVR[mot].IN2, 1);
-    }else if (dir == 2){ //OFF
+    }else if ((dir == 2) || (dir == -2)){ //OFF
         gpio_put(DVR[mot].IN1, 0);
         gpio_put(DVR[mot].IN2, 0);
     }
     pwm_set_chan_level(DVR[mot].slice, DVR[mot].PWM_CHAN, pwm);
 }
 
-uint8_t nkit = 0;
-uint8_t dirkit = 1;
+uint8_t kitd = 0;
+uint8_t gkitd = 0;
+uint8_t kits = 0;
+uint8_t gkits = 0;
 bool kit(struct repeating_timer *t) {
-    queue_try_remove(&kit_q, &nkit);
-    queue_try_remove(&dirkit_q, &dirkit);
 
-    if(nkit > 0){
+    gkitd = 0;
+    gkits = 0;
+    queue_try_remove(&kitd_q, &gkitd);
+    kitd += gkitd;
+    queue_try_remove(&kits_q, &gkits);
+    kits += gkits;
+
+    if(kitd > 0){
         if(SERVO_PWM == serv_0){
-            if(dirkit == 1){
-                SERVO_PWM = serv_getduty(180);
-            }else{
-                SERVO_PWM = serv_getduty(-180);
-            }
-            nkit -= 1;
-        } else{
+            SERVO_PWM = SERVO_PWM = serv_getduty(180);
+            kitd--;
+        }else{
+            SERVO_PWM = serv_0;
+        }
+    }else if(kits > 0){
+        if(SERVO_PWM == serv_0){
+            SERVO_PWM = SERVO_PWM = serv_getduty(-180);
+            kits--;
+        }else{
             SERVO_PWM = serv_0;
         }
     }else{
@@ -288,77 +298,140 @@ bool pid(struct repeating_timer *t) {
 
 void main_1() {
 
-    uint8_t buf, byte[8];
+    uint8_t buf, vel;
+    uint8_t byte[8];
+    uint8_t check = false;
+    uint serialerror = 0;
 
     while(1){
-        buf = 0;
-        uart_read_blocking(uart0, &buf, 1);
-        for(int i=0;i<8;i++){
-            byte[i] = buf % 2;
-            buf = buf / 2;
-        }
         
-        if(byte[7] == 0){
-            if(byte[6] == 0){
-                if(byte[5] != 0){
-                    double distanza;
-                    queue_try_remove(&dist_q, &distanza);
-                    uint8_t temp;
-                    uint16_t data;
-                    data = (int)(distanza*10.0);
+        check = uart_is_readable_within_us(uart0, 2000);
 
-                    for (int k=0; k<2; k++){
-                        temp = data % 100;
-                        data = data / 100;
-                        uart_putc_raw(uart0, temp);
-                    }
-                }else{
-                    if(byte[4] != 0){
-                        uint8_t nkit;
-                        uint8_t dirkit;
+        if(check == false){
 
-                        dirkit = byte[3];
-                        nkit = byte[2] * 2 + byte[1];
-
-                        queue_add_blocking(&dirkit_q, &dirkit);
-                        queue_add_blocking(&kit_q, &nkit);
-                    }
-                }
-            }else{
-                double marti = 0.0;
-                queue_remove_blocking(&dist_q, &marti);
-                marti = 0.0;
+            serialerror += 1;
+            if(serialerror == 250){
                 int8_t resett = 1;
-                queue_add_blocking(&reset_q, &resett);
-                queue_add_blocking(&dist_q, &marti);
-            }
-        }else{ //(BIT 7 == 1)
-
-            double velocita = (byte[5] * 16 + byte[4] * 8 + byte[3] * 4 + byte[2] * 2 + byte[1]) / 20.0;
-            int8_t direzione = 1;
-
-            if (byte[0] == 1) {
-                direzione = 1;
-            } else if(velocita <= 0.1){
-                direzione = 0;
-            } else{
-                direzione = -1;
+                for(int i=0;i<4;i++){
+                    driver_set(i, 0, 0);
+                }
+                queue_try_add(&reset_q, &resett);
             }
 
-            if(byte[6] == 0){ //MOT SX
-                queue_add_blocking(&speed_q[0], &velocita);
-                queue_add_blocking(&speed_q[1], &velocita);
-                queue_add_blocking(&dir_q[0], &direzione);
-                queue_add_blocking(&dir_q[1], &direzione);
-            }else{ //MOT DX
-                queue_add_blocking(&speed_q[2], &velocita);
-                queue_add_blocking(&speed_q[3], &velocita);
-                queue_add_blocking(&dir_q[2], &direzione);
-                queue_add_blocking(&dir_q[3], &direzione);
+        }else{ //SERIALE LEGGIBILE
+
+            buf = 0;
+            uart_read_blocking(uart0, &buf, 1);
+            for(int i=0;i<8;i++){
+                byte[i] = (buf >> i) & 1;
             }
+            
+            if(byte[7] == 0){
+
+                if((byte[6] == 0) && (byte[5] == 1)){ //SET MOTORI
+
+                    check = uart_is_readable_within_us(uart0, 2000);
+
+                    if(check == false){
+
+                        serialerror += 1;
+
+                    }else{
+
+                        uart_read_blocking(uart0, &buf, 1);
+                        vel = buf;
+                        buf = (buf >> 7) & 1;
+
+                        if(buf == 1){
+                            
+                            double velocita = (vel & 127) / 50.0;
+                            int8_t direzione;
+                            int8_t sx;
+
+                            if((byte[1] == 1) && (byte[0] == 1)){ //FRENA
+                                direzione = 0;
+                            }else if((byte[1] == 0) && (byte[0] == 1)){
+                                direzione = 1;
+                            }else if((byte[1] == 1) && (byte[0] == 0)){
+                                direzione = -1;
+                            }else{ //OFF
+                                direzione = 2;
+                            }
+
+                            if(byte[2] == 0){
+                                sx = 0;
+                            }else{
+                                sx = 2;
+                            }
+
+                            double sus;
+                            int8_t sus1;
+
+                            queue_try_remove(&speed_q[sx], &sus);
+                            queue_try_remove(&speed_q[sx+1], &sus);
+                            queue_try_remove(&dir_q[sx], &sus1);
+                            queue_try_remove(&dir_q[sx+1], &sus1);
+
+                            queue_try_add(&speed_q[sx], &velocita);
+                            queue_try_add(&speed_q[sx+1], &velocita);
+                            queue_try_add(&dir_q[sx], &direzione);
+                            queue_try_add(&dir_q[sx+1], &direzione);
+
+                        }
+                
+                    }
+                
+                }else if((byte[6] == 1) && (byte[5] == 0)){ //RICHIESTE
+
+                    if((byte[4] == 0) && (byte[3] == 0)){ //RESET DISTANZA
+
+                        double marti = 0.0;
+                        queue_try_remove(&dist_q, &marti);
+                        marti = 0.0;
+                        int8_t resett = 1;
+                        queue_try_add(&reset_q, &resett);
+                        queue_try_add(&dist_q, &marti);
+
+                    }else if((byte[4] == 0) && (byte[3] == 1)){ //MANDA DISTANZA
+
+                        double distanza;
+                        queue_try_remove(&dist_q, &distanza);
+                        uint8_t temp;
+                        uint16_t data;
+                        data = (int)(distanza*10.0);
+
+                        temp = data >> 8;
+                        uart_putc_raw(uart0, temp);
+                        temp = data;
+                        uart_putc_raw(uart0, temp);
+
+                    }else if((byte[4] == 1) && (byte[3] == 0)){ //KIT
+
+                        uint8_t kit;
+
+                        kit = byte[1] * 2 + byte[0];
+
+                        buf = 0;
+                        if(byte[2] == 1){
+                            queue_try_remove(&kitd_q, &buf);
+                            kit += buf;
+                            queue_try_add(&kitd_q, &kit);
+                        }else{
+                            queue_try_remove(&kits_q, &buf);
+                            kit += buf;
+                            queue_try_add(&kits_q, &kit);
+                        }
+
+                    }
+
+                }
+
+            }
+
         }
 
     }
+
 }
 
 int main() {
@@ -382,8 +455,8 @@ int main() {
     queue_init(&reset_q, sizeof(int8_t), 1);
     queue_init(&dist_q, sizeof(double), 1);
 
-    queue_init(&dirkit_q, sizeof(int8_t), 1);
-    queue_init(&kit_q, sizeof(int8_t), 1);
+    queue_init(&kitd_q, sizeof(int8_t), 1);
+    queue_init(&kits_q, sizeof(int8_t), 1);
     
     struct repeating_timer timerpid;
     add_repeating_timer_us(-500, pid, NULL, &timerpid);
@@ -400,11 +473,9 @@ int main() {
     uint8_t start;
 
     for(int i=0;i<4;i++){
-        wanted_speed[PID.mot] = 0.0;
-        speed[PID.mot] = 0.0;
+        wanted_speed[i] = 0.0;
+        speed[i] = 0.0;
         DIS.trav[i] = 0.0;
-        RSP[i].curr = 4000000000; 
-        RSP[i].impulsi = 0;
     }
 
     while(1) {
@@ -423,7 +494,7 @@ int main() {
 
         if (speedtemp < 2.0) {
             speed[PID.mot] = speedtemp;
-        } else if (speed[PID.mot] < 0.01) {
+        } else if (speed[PID.mot] < 0.1) {
             speed[PID.mot] = 0.0;
             RSP[PID.mot].curr = 4000000000;
         } else{
@@ -449,7 +520,7 @@ int main() {
             
             PID.correction = PID.P + PID.I[PID.mot] + PID.D + PID.pwm[PID.mot];
 
-            PID.correction = PID.correction > 25000 ? 25000 : PID.correction < 0 ? 0 : PID.correction;
+            PID.correction = PID.correction > 50000 ? 50000 : PID.correction < 0 ? 0 : PID.correction;
             PID.pwm[PID.mot] = PID.correction;
         }else{
             PID.pwm[PID.mot] = 0;
