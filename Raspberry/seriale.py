@@ -28,50 +28,57 @@ class SERIALEPICO:
             if (len(readbyte) != byte):
                 print(self.error)
             else:
-                out = readbyte[0] + readbyte[1] * 100
-                if out != 1013:
-                    return out
-                else:
-                    out = 5
-        return 1
+                out = readbyte[0] + (readbyte[1] << 8)
+        return out
     
     def write(self, byte):
         self.ser.write(struct.pack('>B',byte))
         
     def vel(self, vel):
-        if vel > 1.55:
-            vel = 1.55
+        if vel > 2.54:
+            vel = 2.54
         elif vel < 0.0:
             vel = 0.0
         return vel
     
-    def writeMot(self, vel_dx = 0.0, vel_sx = 0.0,  dir_dx = 0, dir_sx = 0):
-        #invia velocità motori, posso richiedere la distanza
+    def writeMot(self, vel_dx = 0.0, vel_sx = 0.0,  dir_dx = 3, dir_sx = 3):
+        #invia velocità motori
         #writeMot() ferma tutto e non richiede la distanza
         
-        self.ser.flush()
+        self.clean()
         
-        vel_dx_i = int((self.vel(vel_dx)) * 20)
-        vel_sx_i = int((self.vel(vel_sx)) * 20)
+        vel_dx_i = int((self.vel(vel_dx)) * 50)
+        vel_sx_i = int((self.vel(vel_sx)) * 50)
         
         dx = [0]*8
         sx = [0]*8
+        dirdx = [0]*2
+        dirsx = [0]*2
         
-        for i in range (1,6):
+        for i in range (0,7):
             dx[i] = vel_dx_i % 2
             sx[i] = vel_sx_i % 2
             vel_dx_i = vel_dx_i // 2
             vel_sx_i = vel_sx_i // 2
             
-        byte = [0]*2
+        dirdx[0] = dir_dx & 0x01
+        dirdx[1] = dir_dx >> 1
+        dirsx[0] = dir_sx & 0x01
+        dirsx[1] = dir_sx >> 1
         
-        byte[0] = (1<<7) | (1<<6) | (dir_dx<<0) #DX
-        byte[1] = (1<<7) | (0<<6) | (dir_sx<<0) #SX
-        for i in range (1,6):
-            byte[0] |= (dx[i]<<i)
-            byte[1] |= (sx[i]<<i)
+        byte = [0]*4
+        
+        byte[0] = (0<<7) | (0<<6) | (1<<5) | (1<<2) | (dirdx[1]<<1) | (dirdx[0]<<0)  #DX
+        byte[2] = (0<<7) | (0<<6) | (1<<5) | (0<<2) | (dirsx[1]<<1) | (dirsx[0]<<0)  #SX
+        
+        for i in range (1,7):
+            byte[1] |= (dx[i]<<i)
+            byte[3] |= (sx[i]<<i)
+        
+        byte[1] |= (1<<7)
+        byte[3] |= (1<<7)
                 
-        for i in range (2):
+        for i in range (4):
             self.write(byte[i])
     
     def resetD(self):
@@ -81,7 +88,21 @@ class SERIALEPICO:
         
     def askD(self):
         self.clean()
-        byte = (0<<7) | (0<<6) | (1<<5)
+        byte = (0<<7) | (1<<6) | (1<<3)
+        self.write(byte)
+        
+    def askK(self, d, n =  0):
+        self.clean()
+        
+        if d == 'DX':
+            d = 1
+        else:
+            d = 0
+        
+        l = n & 0x01;
+        h = n >> 1;
+        
+        byte = (0<<7) | (1<<6) | (1<<4) | (lato<<2) | (h<<1) | (l<<0)
         self.write(byte)
         
     def clean(self):
@@ -107,5 +128,3 @@ if __name__ == '__main__':
         serial.resetD()
     
     serial.writeMot()
-        
-
