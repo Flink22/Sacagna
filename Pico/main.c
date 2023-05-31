@@ -398,11 +398,11 @@ void main_1() {
                         queue_try_remove(&dist_q, &distanza);
                         uint8_t temp;
                         uint16_t data;
-                        data = (int)(distanza*10.0);
+                        data = (uint16_t)(distanza*10.0);
 
-                        temp = data >> 8;
+                        temp = data & 0xFF;
                         uart_putc_raw(uart0, temp);
-                        temp = data;
+                        temp = data >> 8;
                         uart_putc_raw(uart0, temp);
 
                     }else if((byte[4] == 1) && (byte[3] == 0)){ //KIT
