@@ -46,7 +46,7 @@ typedef struct {
 typedef struct {
 	volatile uint32_t curr;
 	volatile uint32_t old;
-	 volatile uint32_t temp;
+	volatile uint32_t temp;
 	volatile uint impulsi;
 	volatile int dir;
     def_encoder ENC;
