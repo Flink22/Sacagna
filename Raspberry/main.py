@@ -34,20 +34,23 @@ def main(camdx_q, camsx_q, vittima):
     
     muro = 150
 
-    mappa = 80
-#     mappa=12
-
-#     xStart = xNow = xend = 6
-#     yStart = yNow = yend = 6
     
-    xStart = xNow = xend = 40
-    yStart = yNow = yend = 40
+    mappa=12
+
+    xStart = xNow = xend = 6
+    yStart = yNow = yend = 6
+    
+#     xStart = xNow = xend = 40
+#     yStart = yNow = yend = 40
+#     mappa = 80
     
     ang_attuale = 0
     dire = 1
     calli=0
     ritorno = 0
-               
+    
+    nero = 500
+    blu = 500
 
 
     from laser import VL6180
@@ -113,13 +116,15 @@ def main(camdx_q, camsx_q, vittima):
 
     robot = board[yNow][xNow]
     
+#     board[7][8]='a'
+#     board[8][7]='b'
+    
                                                                                                                             
     while True:
         
         if running:
         
-            if ang_attuale>360:
-                ang_attuale -= 360
+            ang_attuale = ang_attuale % 360
             
             x=int(math.cos(math.radians(ang_attuale)))
             y=int(math.sin(math.radians(ang_attuale)))
@@ -134,14 +139,14 @@ def main(camdx_q, camsx_q, vittima):
                     bno.begin()
                     bno_ANG = bno.readAngleRot()
                     if (ang_DX > 0):
-                        ser.writeMot(0.3, 0.3, 1, 0)
+                        ser.writeMot(0.3, 0.3, 1, 2)
                         ang_DX = ang_DX - 3
                         while (bno_ANG < ang_DX) or (bno_ANG > 350):
                             bno_ANG = bno.readAngleRot()
                     
                     else:
                         ang_DX = ang_DX + 363
-                        ser.writeMot(0.3, 0.3, 0, 1)
+                        ser.writeMot(0.3, 0.3, 2, 1)
                         while (bno_ANG < 10) or (bno_ANG > ang_DX):
                             bno_ANG = bno.readAngleRot()
                 
@@ -156,13 +161,13 @@ def main(camdx_q, camsx_q, vittima):
                     bno_ANG = bno.readAngleRot()
                     if (ang_SX > 0):
                         ang_SX = ang_SX - 3
-                        ser.writeMot(0.3, 0.3, 0, 1)
+                        ser.writeMot(0.3, 0.3, 2, 1)
                         while (bno_ANG < ang_SX) or (bno_ANG > 350):
                             bno_ANG = bno.readAngleRot()
                     
                     else:
                         ang_SX = ang_SX + 363
-                        ser.writeMot(0.3, 0.3, 1, 0)
+                        ser.writeMot(0.3, 0.3, 1, 2)
                         while (bno_ANG < 10) or (bno_ANG > ang_SX):
                             bno_ANG = bno.readAngleRot()
                 
@@ -195,7 +200,7 @@ def main(camdx_q, camsx_q, vittima):
                 if board[yStart][xStart] != '2':
                     check_avanti = 1
             
-            time.sleep(0.1)
+            time.sleep(0.25)
             try:
                 vit = vittima.get_nowait()
             except Queue.Empty:
@@ -203,17 +208,18 @@ def main(camdx_q, camsx_q, vittima):
                 pass
             if vit>=0:
                 led.blink(5)
-            
-            board[yStart][xStart] = '1'
-            
-    #         
-    #         for i in range(mappa):
-    #             for j in range(mappa):
-    #                 print(' ',board[i][j], end = '')
-    #             
-    #             print()
-    #             print() 
-    #         
+           
+# mappa   ## mappa  # mappa   mappa  # mappa  # mappa   ## mappa  # mappa   mappa  # mappa # mappa   ## mappa  # mappa   mappa  # mappa # mappa   ## mappa  # mappa   mappa  # mappa          
+#             board[yStart][xStart] = '1'
+#             print('angolo')
+#             print(ang_attuale) 
+#             for i in range(mappa):
+#                 for j in range(mappa):
+#                     print(' ',board[i][j], end = '')
+#                  
+#                 print()
+#                 print() 
+#     #         
             
             #SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione
             
@@ -228,7 +234,7 @@ def main(camdx_q, camsx_q, vittima):
                     ang_attuale += 0
                 elif (board [yNow + (y*2)][xNow + (x*2)] == '2') and (board[yNow - y][xNow - x] != '!') and (board[yNow - y][xNow - x] != '?') and (board[yNow - (y*2)][xNow - (x*2)] != '4') and (board[yNow - (y*2)][xNow - (x*2)] != '2'):
                     xNow -= (x*2)
-                    yNow += (y*2)   
+                    yNow -= (y*2)   
                     direzione = 4
                     ang_attuale += 270 
                 elif(board[yNow + (y*2)][xNow + (x*2)] != '2'):
@@ -236,7 +242,7 @@ def main(camdx_q, camsx_q, vittima):
                     yNow += (y*2)    
                     direzione = 2
                     ang_attuale += 90
-                    print(ang_attuale)
+                    
                 else:
                     calli=1
             
@@ -269,7 +275,9 @@ def main(camdx_q, camsx_q, vittima):
                     xNow -= (y*2)
                     direzione = 3
                     ang_attuale += 180
-        
+            
+            ang_attuale = ang_attuale % 360
+            print(ang_attuale)
             if calli==1:
                 print("faccio calli")
                 yn=yNow//2
@@ -361,15 +369,17 @@ def main(camdx_q, camsx_q, vittima):
                             mpcalli[yn+1][xn].padre = 3
                     
                     
-    #                 for i in range(mappa // 2):
-    #                     for j in range(mappa // 2):
-    #                         print(' ',mpcalli[i][j].padre, end = '')
-    #                     
-    #                     print()
-    #                     print()
+#                     for i in range(mappa // 2):
+#                         for j in range(mappa // 2):
+#                             print(' ',mpcalli[i][j].padre, end = '')
+#                          
+#                         print()
+#                         print()
+#                     print()
+#                         
                         
-                        
-                        
+#                     print(frontiera)
+#                     time.sleep(10)
                         
                     for i in range (3):
                         frontiera.pop(0)
@@ -388,9 +398,13 @@ def main(camdx_q, camsx_q, vittima):
                         yn-=1
                     elif mpcalli[yn][xn].padre==1:
                         yn+=1
-                
+#                 for i in range(mappa // 2):
+#                         for j in range(mappa // 2):
+#                             mpcalli[i][j].padre=0
+#                 
     #             print (((ang_attuale) % 360))
     #             print ((mpcalli[yn][xn].padre-1)*90)
+
                 if ((ang_attuale % 360))==(mpcalli[yn][xn].padre-1)*90:
                     yNow -= (x*2)
                     xNow += (y*2)
@@ -403,7 +417,7 @@ def main(camdx_q, camsx_q, vittima):
                     direzione = 2
                     ang_attuale += 90
                     
-                elif ((ang_attuale+180) % 360)==(mpcalli[yn][xn].padre-1)*90:
+                elif ((ang_attuale+180) % 360)==(mpcalli[yn][xn].padre-1)*90 :
                     yNow += (x*2)
                     xNow -= (y*2)
                     direzione = 3
@@ -417,7 +431,7 @@ def main(camdx_q, camsx_q, vittima):
                 arrivo.clear()
             
             #FINE FINE SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione
-            
+            ang_attuale = ang_attuale % 360
             GPIO.output(26,GPIO.LOW)
             time.sleep(0.1)
             GPIO.output(26,GPIO.HIGH)
@@ -432,15 +446,13 @@ def main(camdx_q, camsx_q, vittima):
                 bno_ANG = bno.readAngleRot()
                 if direzione == 2:
                     print('Ruoto di 90 gradi a destra')
-                    ser.writeMot(1.0, 1.0, 1, 0)
+                    ser.writeMot(1.0, 1.0, 1, 2)
                     while (bno_ANG < 85) or (bno_ANG > 350):
-#                         ser.writeMot(1.0, 1.0, 1, 0)
+#                         ser.writeMot(1.0, 1.0, 1, 2)
                         bno_ANG = bno.readAngleRot()
                         #print(bno_ANG)
                     ser.writeMot()
-                    if ((board[yStart - y][xStart - x] == '!') or (board[yStart - y][xStart - x] == '?')):
-                        mv.indietro()
-                        mv.avanti(cm = 4)
+                   
                     if check_avanti == 1:
                         try:
                             camsx_q.put_nowait(True)
@@ -449,15 +461,13 @@ def main(camdx_q, camsx_q, vittima):
                     
                 elif direzione == 4:
                     print('Ruoto di 90 gradi a sinistra')
-                    ser.writeMot(1.0, 1.0, 0, 1)
+                    ser.writeMot(1.0, 1.0, 2, 1)
                     while (bno_ANG > 275) or (bno_ANG < 10):
-#                         ser.writeMot(1.0, 1.0, 0, 1)
+#                         ser.writeMot(1.0, 1.0, 2, 1)
                         bno_ANG = bno.readAngleRot()
                         #print(bno_ANG)
                     ser.writeMot()
-                    if ((board[yStart + y][xStart + x] == '!') or (board[yStart + y][xStart + x] == '?')):
-                        mv.indietro()
-                        mv.avanti(cm = 4)
+                   
                     if check_avanti == 1:
                         try:
                             camdx_q.put_nowait(True)
@@ -468,9 +478,9 @@ def main(camdx_q, camsx_q, vittima):
                     print('Ruoto di 180 gradi a destra')
                     
                     if check_avanti == 1:
-                        ser.writeMot(1.0, 1.0, 1, 0)
+                        ser.writeMot(1.0, 1.0, 1, 2)
                         while (bno_ANG < 85) or (bno_ANG > 350):
-#                             ser.writeMot(1.0, 1.0, 1, 0)
+#                             ser.writeMot(1.0, 1.0, 1, 2)
                             bno_ANG = bno.readAngleRot()
                             #print(bno_ANG)
                         ser.writeMot()
@@ -478,27 +488,44 @@ def main(camdx_q, camsx_q, vittima):
                             camsx_q.put_nowait(True)
                         except Queue.Full:
                             None
+                        time.sleep(0.25)   
+                        try:
+                            vit = vittima.get_nowait()
+                        except Queue.Empty:
+                            vit = -1
+                            pass
+                        if vit>=0:
+                            led.blink(5)
                         bno.begin()
                         time.sleep(0.1)
                         bno_ANG = bno.readAngleRot()
-                        ser.writeMot(1.0, 1.0, 1, 0)
+                        ser.writeMot(1.0, 1.0, 1, 2)
                         while (bno_ANG < 85) or (bno_ANG > 350):
-#                             ser.writeMot(1.0, 1.0, 1, 0)
+#                             ser.writeMot(1.0, 1.0, 1, 2)
                             bno_ANG = bno.readAngleRot()
                             #print(bno_ANG)
                         ser.writeMot()
                         
                     else:
-                        ser.writeMot(0.7, 0.7, 1, 0)
+                        ser.writeMot(0.7, 0.7, 1, 2)
                         while (bno_ANG < 173) or (bno_ANG > 190):
                             bno_ANG = bno.readAngleRot()
                             #print(bno_ANG)
                         ser.writeMot()
-                        
-                    if (board[yNow - y][xNow + x] == '!') or (board[yNow - y][xNow + x] == '?') :
-                        mv.indietro()
-                        mv.avanti(cm = 4)
-             
+          
+            
+#             print ('cosa vedo dietro')
+#             print (board[yNow + x][xNow - y])
+#             print(ang_attuale)
+#             print(x)
+#             print (y)
+#             print(xNow)
+#             print(yNow)
+            
+            if (board[yStart + x][xStart - y] == '!') or (board[yStart + x][xStart - y] == '?'):
+                mv.indietro()
+                mv.avanti(cm = 4)
+                print('sbatto')            
             GPIO.output(26,GPIO.LOW)
             time.sleep(0.1)
             GPIO.output(26,GPIO.HIGH)
@@ -513,16 +540,18 @@ def main(camdx_q, camsx_q, vittima):
                 pass
             if vit>=0:
                 led.blink(5)
+                
             check_avanti = 0
             
+            #AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI
+            dis = mv.avanti(nero = nero)
+#             print (dis)
+#             print ('distanza gg')
+            #AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI#AVANTI
             
-            dis = mv.avanti()
-            print (dis)
-            print ('distanza gg')
-            
-            if (apds.readC()<500):
+            if (apds.readC()<nero) and (apds.readB()<blu):
                 print('Negro')
-                mv.indietro()
+                mv.indietro(dis/100)
                 
                 board[yNow][xNow] = '4'
                 yNow = yStart
@@ -533,14 +562,14 @@ def main(camdx_q, camsx_q, vittima):
                 bno.begin()
                 print('Ruoto di 180 gradi')
                 bno_ANG = bno.readAngleRot()
-                ser.writeMot(0.7, 0.7, 1, 0)
+                ser.writeMot(0.7, 0.7, 1, 2)
                 while (bno_ANG < 173) or (bno_ANG > 190):
-#                     ser.writeMot(0.7, 0.7, 1, 0)
+#                     ser.writeMot(0.7, 0.7, 1, 2)
                     bno_ANG = bno.readAngleRot()
                    # print(bno_ANG)
                 ser.writeMot()
                 
-            elif(apds.readB()<800):
+            elif(apds.readB()<blu):
                 print('Blu')
                 time.sleep(4.5)
                     
@@ -555,7 +584,14 @@ def main(camdx_q, camsx_q, vittima):
                 
             Fc_avanti = fc.read()
             if not(Fc_avanti[1]):
-                mv.indietro(3)
+                if dis<1000:
+                    print('finecorsa -1')
+                    mv.indietro(dis/100)
+                    xNow=xStart
+                    yNow=yStart
+                else:
+                    print('finecorsa')
+                    mv.indietro(3)
             
             if yStart != yNow or xStart != xNow :
                 yStart = yNow
