@@ -2,9 +2,9 @@ import cv2 as cv
 import numpy as np
 
 class colors:
-    def __init__(self):
-        
-        self.areamin = 3000
+    def __init__(self, nome):
+        self.nome = nome
+        self.areamin = 2500
         
         self.low_g = np.array([30, 40, 40])
         self.high_g = np.array([90, 255, 255])
@@ -26,7 +26,7 @@ class colors:
         if len(contours) != 0:  
             cnt = max(contours, key=cv.contourArea)
             if cv.contourArea(cnt) > self.areamin:
-               print("VERDE")
+               print("Telecamera", self.nome, "VERDE")
                self.col_N = 0
                return hsv, self.col_N
                 
@@ -34,8 +34,8 @@ class colors:
         contours, hierarchy = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         if len(contours) != 0:  
             cnt = max(contours, key=cv.contourArea)
-            if cv.contourArea(cnt) > 5000:
-               print("GIALLO")
+            if cv.contourArea(cnt) > self.areamin:
+               print("Telecamera", self.nome, "GIALLO")
                self.col_N = 1
                return hsv, self.col_N
             
@@ -44,10 +44,10 @@ class colors:
         if len(contours) != 0:  
             cnt = max(contours, key=cv.contourArea)
             if cv.contourArea(cnt) > self.areamin:
-               print("ROSSO")
+               print("Telecamera", self.nome, "ROSSO")
                self.col_N = 1
                return hsv, self.col_N
         
         if self.col_N == -1:
-            print("NO COLOR")
+            print("Telecamera", self.nome, "NO COLOR")
         return hsv, self.col_N
