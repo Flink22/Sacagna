@@ -6,14 +6,14 @@ class colors:
         self.nome = nome
         self.areamin = 2500
         
-        self.low_g = np.array([30, 40, 40])
-        self.high_g = np.array([90, 255, 255])
+        self.low_y = np.array([22, 60, 200])
+        self.high_y = np.array([60, 255, 255])
         
-        self.low_y = np.array([20, 100, 100])
-        self.high_y = np.array([30, 255, 255])
+        self.low_g = np.array([50, 70, 130])
+        self.high_g = np.array([90, 250, 255])
         
-        self.low_r = np.array([0, 50, 50])
-        self.high_r = np.array([10, 255, 255])
+        self.low_r = np.array([0, 100, 195])
+        self.high_r = np.array([8, 255, 255])
         
         self.col_N = -1
         
