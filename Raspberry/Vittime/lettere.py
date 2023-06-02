@@ -8,13 +8,13 @@ class letters:
     def find(self, blur, frame):
         
         gray = cv.cvtColor(blur, cv.COLOR_BGR2GRAY)
-        thresh = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 29, 11)
+        thresh = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 29, 19)
         mask = cv.inRange(thresh, 0, 1)
         contours, hierarchy = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         self.def_N = -1
         if len(contours) != 0:  
             cnt = max(contours, key=cv.contourArea)
-            if cv.contourArea(cnt) > 800:
+            if cv.contourArea(cnt) > 300:
                 hull = cv.convexHull(cnt, returnPoints = False)
                 try:
                     defects = cv.convexityDefects(cnt, hull)
@@ -52,3 +52,4 @@ class letters:
         else:
             print("NO LETTER")
         return mask, self.def_N
+
