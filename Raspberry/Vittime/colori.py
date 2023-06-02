@@ -4,7 +4,7 @@ import numpy as np
 class colors:
     def __init__(self, nome):
         self.nome = nome
-        self.areamin = 2500
+        self.areamin = 1000
         
         self.low_y = np.array([22, 60, 200])
         self.high_y = np.array([60, 255, 255])
