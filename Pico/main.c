@@ -46,7 +46,7 @@ typedef struct {
 typedef struct {
 	volatile uint32_t curr;
 	volatile uint32_t old;
-	volatile uint32_t temp;
+	 volatile uint32_t temp;
 	volatile uint impulsi;
 	volatile int dir;
     def_encoder ENC;
@@ -310,12 +310,13 @@ void main_1() {
         if(check == false){
 
             serialerror += 1;
-            if(serialerror == 250){
+            if(serialerror > 250){
                 int8_t resett = 1;
                 for(int i=0;i<4;i++){
                     driver_set(i, 0, 0);
                 }
                 queue_try_add(&reset_q, &resett);
+                serialerror = 0;
             }
 
         }else{ //SERIALE LEGGIBILE
@@ -335,7 +336,7 @@ void main_1() {
                     if(check == false){
 
                         serialerror += 1;
-
+                        
                     }else{
 
                         uart_read_blocking(uart0, &buf, 1);
