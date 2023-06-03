@@ -176,41 +176,42 @@ def main(camdx_q, camsx_q, vittima):
             #FINE FINE RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO#RADDRIZZO   
             
             check_avanti = 0
-            
-            if ((laser.read(1) < muro) and (laser.read(2) < muro)):
-                if board[yStart][xStart] != '2':
-                    print()
-                    try:
-                        camdx_q.put_nowait(True)
-                    except Queue.Full:
-                        None
-                board[yNow + y][xNow + x] = '!'
+            if ritorno==0:
+                if ((laser.read(1) < muro) and (laser.read(2) < muro)):
+                    if board[yStart][xStart] != '2':
+                        print()
+                        try:
+                            camdx_q.put_nowait(True)
+                        except Queue.Full:
+                            None
+                    board[yNow + y][xNow + x] = '!'
 
-            if ((laser.read(3) < muro) and (laser.read(4) < muro)):
-                if board[yStart][xStart] != '2':
-                    print()
-                    try:
-                        camsx_q.put_nowait(True)
-                    except Queue.Full:
-                        None
-                board[yNow - y][xNow - x] = '!'
-            
-            if laser.read(0) < muro:
-                board[yNow - x][xNow + y] = '?'
-                if board[yStart][xStart] != '2':
-                    check_avanti = 1
-            
-            time.sleep(0.25)
-            try:
-                vit = vittima.get_nowait()
-            except Queue.Empty:
-                vit = -1
-                pass
-            if vit>=0:
-                led.blink(5)
-           
+                if ((laser.read(3) < muro) and (laser.read(4) < muro)):
+                    if board[yStart][xStart] != '2':
+                        print()
+                        try:
+                            camsx_q.put_nowait(True)
+                        except Queue.Full:
+                            None
+                    board[yNow - y][xNow - x] = '!'
+                
+                if laser.read(0) < muro:
+                    board[yNow - x][xNow + y] = '?'
+                    if board[yStart][xStart] != '2':
+                        check_avanti = 1
+                
+                time.sleep(0.25)
+                try:
+                    vit = vittima.get_nowait()
+                except Queue.Empty:
+                    vit = -1
+                    pass
+                if vit>=0:
+                    led.blink(5)
+            board[yStart][xStart] = '1' 
 # mappa   ## mappa  # mappa   mappa  # mappa  # mappa   ## mappa  # mappa   mappa  # mappa # mappa   ## mappa  # mappa   mappa  # mappa # mappa   ## mappa  # mappa   mappa  # mappa          
-#             board[yStart][xStart] = '1'
+            
+            
 #             print('angolo')
 #             print(ang_attuale) 
 #             for i in range(mappa):
@@ -219,7 +220,7 @@ def main(camdx_q, camsx_q, vittima):
 #                  
 #                 print()
 #                 print() 
-#     #         
+    #         
             
             #SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione#SCELGO direzione
             
@@ -289,7 +290,8 @@ def main(camdx_q, camsx_q, vittima):
                 frontiera= [xn,yn,dis]
                 mpcalli[yn][xn].distanza = 0
                 while len(arrivo) == 0:
-                    if len (frontiera) ==0 and ritorno == 0:
+                    print (frontiera)
+                    if len (frontiera) ==0 and ritorno == 0 and not(yend==yNow and xend == xNow):
                         print ('ritorno')
                         ritorno = 1
                         board[yend][xend]= '0'
@@ -300,7 +302,7 @@ def main(camdx_q, camsx_q, vittima):
                         mpcalli = [[casella() for i in range(mappa//2)] for i in range(mappa//2)]
                         frontiera= [xn,yn,dis]
                         mpcalli[yn][xn].distanza = 0
-               
+                    print (ritorno)
                     xn=frontiera[0]
                     yn=frontiera[1]
                     dis=frontiera[2]
@@ -524,7 +526,7 @@ def main(camdx_q, camsx_q, vittima):
             
             if (board[yStart + x][xStart - y] == '!') or (board[yStart + x][xStart - y] == '?'):
                 mv.indietro()
-                mv.avanti(cm = 4)
+                mv.avanti(cm = 3)
                 print('sbatto')            
             GPIO.output(26,GPIO.LOW)
             time.sleep(0.1)
