@@ -66,18 +66,18 @@ class BNO055:
         return True
     
     def setExternalCrystalUse(self, useExternalCrystal = True):
-		prevMode = self._mode
-		self.setMode(BNO055.OPERATION_MODE_CONFIG)
-		time.sleep(0.025)
-		self.writeBytes(BNO055.BNO055_PAGE_ID_ADDR, [0])
-		self.writeBytes(BNO055.BNO055_SYS_TRIGGER_ADDR, [0x80] if useExternalCrystal else [0])
-		time.sleep(0.01)
-		self.setMode(prevMode)
-		time.sleep(0.02)
+	prevMode = self._mode
+	self.setMode(BNO055.OPERATION_MODE_CONFIG)
+	time.sleep(0.025)
+	self.writeBytes(BNO055.BNO055_PAGE_ID_ADDR, [0])
+	self.writeBytes(BNO055.BNO055_SYS_TRIGGER_ADDR, [0x80] if useExternalCrystal else [0])
+	time.sleep(0.01)
+	self.setMode(prevMode)
+	time.sleep(0.02)
     
     def getCalibration(self):
-		calData = self.readBytes(BNO055.BNO055_CALIB_STAT_ADDR)[0]
-		return (calData >> 6 & 0x03, calData >> 4 & 0x03, calData >> 2 & 0x03, calData & 0x03)
+	calData = self.readBytes(BNO055.BNO055_CALIB_STAT_ADDR)[0]
+	return (calData >> 6 & 0x03, calData >> 4 & 0x03, calData >> 2 & 0x03, calData & 0x03)
     
     def readAngleRot(self):
         buf = self.readBytes(BNO055.VECTOR_EULER, 6)
