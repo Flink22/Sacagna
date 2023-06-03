@@ -5,22 +5,24 @@ import RPi.GPIO as gpio
 import board
 
 class BNO055:
-    BNO055_ID 				= 0xA0
+    BNO055_ID 				    = 0xA0
     
-    POWER_MODE_NORMAL 		= 0X00
-    OPERATION_MODE_CONFIG 	= 0X00
-    OPERATION_MODE_IMUPLUS 	= 0X08
+    POWER_MODE_NORMAL 		    = 0X00
+    OPERATION_MODE_CONFIG 	    = 0X00
+    OPERATION_MODE_IMUPLUS 	    = 0X08
     
-    VECTOR_EULER 			= 0x1A
-    BNO055_LINEAR_ACCEL_DATA_X_LSB_ADDR = 0x28
+    VECTOR_EULER 			    = 0x1A
+    VECTOR_ACCELL               = 0x28
     
-    BNO055_PAGE_ID_ADDR 	= 0X07
-    BNO055_CHIP_ID_ADDR 	= 0x00
+    BNO055_PAGE_ID_ADDR 	    = 0X07
+    BNO055_CHIP_ID_ADDR 	    = 0x00
     
-    BNO055_OPR_MODE_ADDR 	= 0X3D
-    BNO055_PWR_MODE_ADDR 	= 0X3E
+    BNO055_OPR_MODE_ADDR 	    = 0X3D
+    BNO055_PWR_MODE_ADDR 	    = 0X3E
     
-    BNO055_SYS_TRIGGER_ADDR = 0X3F
+    BNO055_SYS_STAT_ADDR 	    = 0X39
+    BNO055_SYS_TRIGGER_ADDR     = 0X3F
+    BNO055_SELFTEST_RESULT_ADDR	= 0X36
     
     def __init__(self, sensorId=-1, address=0x28):
         gpio.setup(10,gpio.OUT)
@@ -62,6 +64,20 @@ class BNO055:
         time.sleep(0.02)
         
         return True
+    
+    def setExternalCrystalUse(self, useExternalCrystal = True):
+		prevMode = self._mode
+		self.setMode(BNO055.OPERATION_MODE_CONFIG)
+		time.sleep(0.025)
+		self.writeBytes(BNO055.BNO055_PAGE_ID_ADDR, [0])
+		self.writeBytes(BNO055.BNO055_SYS_TRIGGER_ADDR, [0x80] if useExternalCrystal else [0])
+		time.sleep(0.01)
+		self.setMode(prevMode)
+		time.sleep(0.02)
+    
+    def getCalibration(self):
+		calData = self.readBytes(BNO055.BNO055_CALIB_STAT_ADDR)[0]
+		return (calData >> 6 & 0x03, calData >> 4 & 0x03, calData >> 2 & 0x03, calData & 0x03)
     
     def readAngleRot(self):
         buf = self.readBytes(BNO055.VECTOR_EULER, 6)
