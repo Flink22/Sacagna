@@ -20,7 +20,8 @@ class VL6180:
         self.laser[2].define(pin = 20, address = 0x22)
         self.laser[3].define(pin = 21, address = 0x23)
         self.laser[4].define(pin = 18, address = 0x24)
-        
+    
+    def begin(self):
         for i in range(0, 5):
             GPIO.setup(self.laser[i].pin,GPIO.OUT)
             GPIO.output(self.laser[i].pin,GPIO.LOW)
@@ -32,7 +33,8 @@ class VL6180:
             ls._write_8(0x212, self.laser[i].address)
             time.sleep(0.1)
             self.laser[i].misura = vl6180.VL6180X(i2c, self.laser[i].address)
-        print("Laser INIT finito")
+           
+        return True
 
     def read(self , n):
         misura = self.laser[n].misura.range
