@@ -46,7 +46,7 @@ typedef struct {
 typedef struct {
 	volatile uint32_t curr;
 	volatile uint32_t old;
-	 volatile uint32_t temp;
+	volatile uint32_t temp;
 	volatile uint impulsi;
 	volatile int dir;
     def_encoder ENC;
@@ -310,13 +310,12 @@ void main_1() {
         if(check == false){
 
             serialerror += 1;
-            if(serialerror > 250){
+            if(serialerror == 250){
                 int8_t resett = 1;
                 for(int i=0;i<4;i++){
                     driver_set(i, 0, 0);
                 }
                 queue_try_add(&reset_q, &resett);
-                serialerror = 0;
             }
 
         }else{ //SERIALE LEGGIBILE
@@ -336,7 +335,7 @@ void main_1() {
                     if(check == false){
 
                         serialerror += 1;
-                        
+
                     }else{
 
                         uart_read_blocking(uart0, &buf, 1);
@@ -493,7 +492,7 @@ int main() {
         
         speedtemp = (((double)1000000.0) / (((double)RSP[PID.mot].curr) * 680.0));
 
-        if (speedtemp < 2.0) {
+        if (speedtemp < 3.0) {
             speed[PID.mot] = speedtemp;
         } else if (speed[PID.mot] < 0.1) {
             speed[PID.mot] = 0.0;
@@ -533,10 +532,10 @@ int main() {
 
         if (reset == 0) {
             DIS.trav[PID.mot] += speed[PID.mot] * 0.002 * 69 * M_PI;
-            DIS.temp = 10000.0;
+            DIS.temp = 1000000.0;
 
             for(int i=0;i<4;i++){
-                if (DIS.trav[i] < DIS.temp)DIS.temp = DIS.trav[i];
+                if (DIS.trav[i] <  DIS.temp)DIS.temp = DIS.trav[i];
             }
 
             if(DIS.temp>290){
