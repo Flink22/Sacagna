@@ -15,14 +15,7 @@ class APDS9960:
     APDS9960_CONFIG2 = 0x90
     APDS9960_CONFIG3 = 0x9F
     
-    APDS9960_CDATAL  = 0x94
-    APDS9960_CDATAH  = 0x95
-    APDS9960_RDATAL  = 0x96
-    APDS9960_RDATAH  = 0x97
-    APDS9960_GDATAL  = 0x98
-    APDS9960_GDATAH  = 0x99
-    APDS9960_BDATAL  = 0x9A
-    APDS9960_BDATAH  = 0x9B
+    APDS9960_DATA  = 0x94
     
     def __init__(self, sensorId=-1, address=0x39):
         self._sensorId = sensorId
@@ -45,15 +38,10 @@ class APDS9960:
         time.sleep(0.05)
         return True
     
-    def readC(self):
-        buf = self.readBytes(APDS9960.APDS9960_CDATAL, 2)
-        clear = struct.unpack('h', struct.pack('BB', buf[0], buf[1]))
-        return clear[0]
-    
-    def readB(self):
-        buf = self.readBytes(APDS9960.APDS9960_BDATAL, 2)
-        blue = struct.unpack('h', struct.pack('BB', buf[0], buf[1]))
-        return blue[0]
+    def read(self):
+        buf = self.readBytes(APDS9960.APDS9960_DATA, 8)
+        clear = struct.unpack('hhhh', struct.pack('BBBBBBBB', buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]))
+        return clear
     
     def readBytes(self, register, numBytes=1):
         return self._bus.read_i2c_block_data(self._address, register, numBytes)
@@ -68,5 +56,5 @@ if __name__ == '__main__':
         exit()
     time.sleep(1)
     while True:
-        print(apds.readB())
+        print(apds.read())
         time.sleep(0.01)
