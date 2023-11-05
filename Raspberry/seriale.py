@@ -29,6 +29,7 @@ class SERIALEPICO:
                 print(self.error)
             else:
                 out = readbyte[0] + (readbyte[1] << 8)
+        self.clean()
         return out
     
     def write(self, byte):
@@ -87,20 +88,19 @@ class SERIALEPICO:
         self.write(byte)
         
     def askD(self):
-        self.clean()
         byte = (0<<7) | (1<<6) | (1<<3)
         self.write(byte)
         
-    def askK(self, d, n =  0):
+    def askK(self, n, d):
         self.clean()
         
         if d == 'DX':
-            d = 1
+            lato = 1
         else:
-            d = 0
+            lato = 0
         
-        l = n & 0x01;
-        h = n >> 1;
+        l = n % 2
+        h = n // 2
         
         byte = (0<<7) | (1<<6) | (1<<4) | (lato<<2) | (h<<1) | (l<<0)
         self.write(byte)
@@ -109,22 +109,21 @@ class SERIALEPICO:
         self.ser.flush()
         self.ser.flushInput()
 
-
 if __name__ == '__main__':
     serial = SERIALEPICO()
-    serial.writeMot(1.0, 1.0, 1, 1)
-    time.sleep(1)
+    serial.askK(3, 'SX')
+    time.sleep(10)
     while True:
         a=0
-        while a<2850:
-            serial.writeMot(0.8, 0.8, 1, 1)
-            serial.askD()
-            print('--------')
-            a = serial.read()
-            print(a)
-        
-        serial.writeMot()
-        time.sleep(1)
-        serial.resetD()
+#         while a<2850:
+#             serial.writeMot(0.8, 0.8, 1, 1)
+#             serial.askD()
+#             print('--------')
+#             a = serial.read()
+#             print(a)
+#         
+#         serial.writeMot()
+#         time.sleep(1)
+#         serial.resetD()
     
     serial.writeMot()
