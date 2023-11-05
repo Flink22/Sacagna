@@ -1,6 +1,7 @@
 import cv2 as cv
 import imutils
 import numpy as np
+import time
 from lettere import letters
 from colori import colors
 import queue as Queue
@@ -18,7 +19,7 @@ class CAMERAS:
         self.exposuretime = exposure #va da 78 a 1250
         self.check = True
         
-        self.cam = cap
+        self.cam = cv.VideoCapture(cap)
         self.cam.set(cv.CAP_PROP_FRAME_WIDTH, 320)
         self.cam.set(cv.CAP_PROP_FRAME_HEIGHT, 240)
         self.cam.set(cv.CAP_PROP_AUTO_EXPOSURE, 1)
@@ -60,23 +61,24 @@ class CAMERAS:
                 blur = cv.GaussianBlur(undistorted_frame, (5, 5), 0)
                 
 #                 self.check = True
-                if self.check == True:
+                if self.check:
+                    start = time.time()
                     cframe, n_d = self.col.find(blur, undistorted_frame)
                     cv.imshow(self.colori, cframe)
                     if n_d == -1:
                         lframe, n_d = self.let.find(blur, frame)
                         cv.imshow(self.lettere, lframe)
-                    try:
-                        vittima.put_nowait(n_d)
-                    except Queue.Full:
-                        None
-                    
-                    print(n_d)
-                    if n_d > 0:
+                        
+                    if n_d != -1:
+                        try:
+                            vittima.put_nowait(n_d)
+                        except Queue.Full:
+                            None
+                        temp = time.time() - start
                         ser.askK(n_d, self.nome)
-            
+                        print("Telecamera", self.nome, n_d, "KIT in", temp)            
                 
-                cv.imshow(self.nome, blur)
+                cv.imshow(self.nome, undistorted_frame)
 #                 cv.imshow('thresh', thresh)
 
                 self.check = False
@@ -85,12 +87,11 @@ class CAMERAS:
                 if cv.waitKey(1) & 0xFF == ord('q'):
                     break
         except KeyboardInterrupt:
-            None
             self.close()
     
     def close(self):
         self.cam.release()
-        cv2.closeAllWindows()
+        cv.closeAllWindows()
 
 if __name__ == '__main__':
     camdx = CAMERAS(70, -1, 'DX')
